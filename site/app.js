@@ -123,8 +123,7 @@ function adapt(data = {}) {
   out.extra = (data.extra || []).map((s) => ({ title: s.title || "", items: [...(s.items || [])] }));
   out.settings = { ...out.settings, ...(data.settings || {}) };
   out.settings.sections = normalizeOrder(out.settings.sections);
-  out.settings.formats = (out.settings.formats || ["pdf"]).filter((f) => f in FORMATS);
-  if (!out.settings.formats.length) out.settings.formats = ["pdf"];
+  out.settings.formats = ["pdf"];  // every visit starts with PDF ticked and nothing else
   return out;
 }
 
@@ -694,7 +693,6 @@ $("#export").addEventListener("click", async () => {
   const formats = $$("#formats input:checked").map((box) => box.value);
   if (!formats.length) return setExportNote("Pick at least one format.", true);
   if (!state.basics.name.trim()) return setExportNote("Add your name first.", true);
-  state.settings.formats = formats;
   const trigger = $("#export");
   trigger.disabled = true;
   setExportNote("Making your files…");
