@@ -6,19 +6,27 @@
 
 import { outputStem, prepare, renderHtml, themeCss } from "./resume.js";
 import { bulletTips, review } from "./review.js";
-import { buildDocx } from "./docx.js";
 
 const THEMES = ["classic", "compact", "modern"];
 const FORMATS = {
-  pdf: "PDF — opens your print dialog; pick “Save as PDF”",
+  pdf: "PDF — best for sending and uploading",
   docx: "Word (.docx) — editable in Word or Google Docs",
 };
-const MIN_SCALE = 0.85;
-/* A few millimetres held back for rounding between what we measure here and how the print engine
-   lays the page out. Without any slack, a resume that exactly fills the page tips its last line
-   onto a second one. */
-const PRINT_RESERVE_MM = 5;
-const mmToPx = (mm) => (mm / 25.4) * 96;
+
+/* The page draws its own preview, but finished files come from the renderer behind /api/export —
+   the same Chromium pipeline the command line uses, so a PDF carries no print-dialog headers. */
+const TOKEN = document.body.dataset.token;
+
+async function api(path, payload) {
+  const response = await fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-ResumeSmith-Token": TOKEN },
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json().catch(() => ({ error: "the renderer didn't answer properly" }));
+  if (!response.ok) throw new Error(data.error || "something went wrong");
+  return data;
+}
 
 /* ---------- small helpers ---------- */
 
@@ -585,7 +593,7 @@ function fitPreview() {
   paper.style.width = `${w * scale}px`;
   paper.style.height = `${contentH * scale}px`;
   const measured = contentHeight(frame.contentDocument);
-  if (measured !== null) setPages(measured / (h - mmToPx(PRINT_RESERVE_MM)));
+  if (measured !== null) setPages(measured / h);
 }
 
 /** `pages` is how much of the printable page the content takes, 1 being exactly full. */
@@ -642,31 +650,12 @@ $("#review-toggle").addEventListener("click", () => {
   panel.hidden = !panel.hidden;
 });
 
-/* ---------- fitting one page, measured in a hidden frame ---------- */
+/* ---------- measuring the page ---------- */
 
-const ruler = $("#ruler");
-
-/* The margins stay where they are: Chrome prints its header and footer in that band, and squeezing
-   it is what pushed a line onto page two. Only the type gets smaller. */
-function fitSteps(settings) {
-  const margin = 13;
-  const steps = [[1, margin]];
-  if (!settings.one_page) return steps;
-  for (let scale = 0.97; scale >= MIN_SCALE - 1e-9; scale -= 0.03) {
-    steps.push([Math.round(scale * 100) / 100, margin]);
-  }
-  return steps;
-}
-
-const frameLoaded = (target) => new Promise((resolve) => {
-  target.addEventListener("load", resolve, { once: true });
-});
-
-/** Tries the same steps the Python exporter does: tighter margins first, then slightly smaller type. */
 /**
- * How much of the page the content really takes, top margin to bottom margin.
- * `.sheet` has a min-height so the preview looks like a sheet of paper, which would otherwise hide
- * a short resume and make every measurement read as a full page.
+ * How much of the page the content really takes, top margin to bottom margin. `.sheet` carries a
+ * min-height so the preview looks like a sheet of paper, which would otherwise make every
+ * measurement — even a two-line resume — read as a full page.
  */
 function contentHeight(doc) {
   const sheet = doc?.querySelector(".sheet");
@@ -674,20 +663,6 @@ function contentHeight(doc) {
   if (!sheet || !last) return null;
   const padding = parseFloat(doc.defaultView.getComputedStyle(sheet).paddingBottom);
   return last.getBoundingClientRect().bottom - sheet.getBoundingClientRect().top + padding;
-}
-
-async function fitToPage(resume, css) {
-  const limit = pagePx().h - mmToPx(PRINT_RESERVE_MM);
-  let height = null;
-  for (const [scale, margin] of fitSteps(resume.settings)) {
-    ruler.srcdoc = renderHtml(resume, { css, scale, margin, bare: true });
-    await frameLoaded(ruler);
-    height = contentHeight(ruler.contentDocument);
-    if (height === null) break;
-    if (height <= limit) return { scale, margin, pages: 1, fitted: true };
-  }
-  return { scale: 1, margin: 13, fitted: !resume.settings.one_page,
-           pages: height ? Math.ceil(height / limit) : 1 };
 }
 
 /* ---------- saving files ---------- */
@@ -701,20 +676,19 @@ function saveBlob(name, content, type) {
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
-/** The PDF comes from the browser's own print engine, so the text stays real text. */
-async function printResume(resume, css, fit) {
-  const sheet = $("#printer");
-  sheet.srcdoc = renderHtml(resume, { css, scale: fit.scale, margin: fit.margin });
-  await frameLoaded(sheet);
-  sheet.contentWindow.focus();
-  sheet.contentWindow.print();
-}
-
 const setExportNote = (text, bad = false) => {
   const note = $("#export-note");
   note.textContent = text;
   note.classList.toggle("bad", bad);
 };
+
+/** Hand a finished file to the browser, which puts it wherever downloads go. */
+function saveFrom(url, name) {
+  const link = el("a", { href: url, download: name });
+  document.body.append(link);
+  link.click();
+  link.remove();
+}
 
 $("#export").addEventListener("click", async () => {
   const formats = $$("#formats input:checked").map((box) => box.value);
@@ -725,22 +699,12 @@ $("#export").addEventListener("click", async () => {
   trigger.disabled = true;
   setExportNote("Making your files…");
   try {
-    const { resume, problems } = prepare(state);
-    if (problems.length) throw new Error(problems.map((p) => `${p.where}: ${p.message}`).join("\n"));
-    const css = await themeCss(resume.settings.theme);
-    const fit = await fitToPage(resume, css);
-    const stem = outputStem(resume);
-
-    if (formats.includes("docx")) saveBlob(`${stem}.docx`, buildDocx(resume, fit));
-    if (formats.includes("pdf")) await printResume(resume, css, fit);
-
-    const fitNote = fit.fitted === false && fit.pages > 1
-      ? `${fit.pages} pages — too long for one`
-      : fit.scale < 1 ? `Fitted onto one page (type at ${Math.round(fit.scale * 100)}%)` : "One page";
-    const done = [];
-    if (formats.includes("docx")) done.push("Word file saved to your downloads");
-    if (formats.includes("pdf")) done.push("in the print window choose “Save as PDF”");
-    setExportNote(`${fitNote} · ${done.join(" · ")}`, fit.fitted === false);
+    const result = await api("/api/export", { resume: state, formats });
+    result.files.forEach((file) => saveFrom(file.url, file.name));
+    const pages = result.fitted === false && result.pages > 1
+      ? `${result.pages} pages — too long for one`
+      : result.scale < 1 ? `One page (type at ${Math.round(result.scale * 100)}%)` : "One page";
+    setExportNote(`${pages} · saved to your downloads`, result.fitted === false);
     setError("");
   } catch (e) {
     setExportNote("Couldn't export — see the message above", true);

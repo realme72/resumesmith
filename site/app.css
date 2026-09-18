@@ -179,9 +179,6 @@ textarea.area { resize: vertical; min-height: 38px; line-height: 1.4; }
 /* the line that tells people where their data lives */
 .privacy { margin: 0; padding: 9px 16px; font-size: 12px; color: var(--muted); background: var(--bg); border-top: 1px solid var(--line); }
 
-/* frames that measure the page fit and feed the print dialog: laid out, but off the screen */
-.offscreen { position: fixed; top: 0; left: -10000px; width: 794px; height: 1200px; border: 0; }
-
 @media (max-width: 950px) {
   body { height: auto; overflow: auto; }
   .layout { grid-template-columns: 1fr; }

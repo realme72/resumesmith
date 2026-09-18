@@ -2,19 +2,22 @@
 
 Two front ends over one resume format:
 
-- `site/` — the browser app that gets deployed (static, no server, no build step). `resume.js`
-  renders the resume, `review.js` is the wording check, `docx.js` writes a Word file by hand
-  (OOXML + a small ZIP writer), `app.js` is the page, `themes/*.css` are the designs.
-- `src/resumesmith/` — the Python command line: `./resumesmith build FILE -f pdf,docx [-t theme|all]`,
-  `check`, `match`, `serve` (serves `site/`), `new`. It renders with Playwright/Chromium and shares
-  `site/themes/`.
+- `site/` — the page served by `./resumesmith serve`: `app.js` is the form and the wiring,
+  `resume.js` draws the preview, `review.js` is the wording check, `themes/*.css` are the designs.
+  It draws its own preview but asks `/api/export` for finished files.
+- `src/resumesmith/` — the renderer and command line: `./resumesmith build FILE -f pdf,docx
+  [-t theme|all]`, `check`, `match`, `serve`, `new`. Renders with Playwright/Chromium.
+
+**Exports go through the Python renderer, never the browser's print dialog.** That dialog stamps the
+page URL, date and page number onto the resume and makes the person click through it; a PDF must come
+out of Chromium clean, in one click. This was tried the other way and reverted.
 
 Tests: `.venv/bin/python -m pytest -q`.
 
-**The two renderers must stay in step.** `site/resume.js` is a port of `text.py`, the Jinja template
-and the model's normalisation; `site/review.js` is a port of `lint.py`; `site/docx.js` mirrors
-`render_docx.py`. Change one, change the other. The check that catches drift renders
-`resumes/example.yaml` both ways and compares the markup — run it after touching either renderer.
+**The preview and the exporter must stay in step.** `site/resume.js` is a port of `text.py`, the
+Jinja template and the model's normalisation; `site/review.js` is a port of `lint.py`. Change one,
+change the other. The check that catches drift renders `resumes/example.yaml` both ways and compares
+the markup — run it after touching either renderer.
 
 CSS layout in `site/` can't be covered by pytest. Verify it by driving the page with Playwright
 (`channel="chrome"`): check `document.body.scrollHeight - window.innerHeight`, that nothing covers

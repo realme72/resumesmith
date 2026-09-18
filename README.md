@@ -1,17 +1,27 @@
 # ResumeSmith
 
-A resume builder that runs entirely in your browser. Fill in the form, watch the page redraw as you
-type, and download a PDF or a Word file. No account, no upload, no paid tier.
+A resume builder you run yourself. Fill in the form, watch the page redraw as you type, and download
+a polished PDF or Word file in one click. No account, no upload to anyone else, no paid tier.
 
-**Your details never leave your machine.** There is no server to send them to: the page renders the
-resume, checks the wording and builds the files locally. What you type is kept in this browser's own
-storage so a reload doesn't lose it, and **Save a copy** hands you a file you can keep.
+Your draft is kept in your browser's own storage, so a reload never costs you anything, and the
+renderer that turns it into a file runs on the machine you started it on. Nothing is kept once a
+file has been handed to you.
+
+## Start
+
+```bash
+cd resumesmith
+./resumesmith serve
+```
+
+Your browser opens on the dashboard: details on the left, a live preview on the right, formats along
+the bottom. Press **Export** and the files land in your downloads.
 
 ## What it does
 
-- **Live preview** — the page you see is the page that prints.
-- **One page** — when the content spills over, it tightens the margins, then the type, down to about
-  9 pt. If it still doesn't fit, it tells you rather than cramming.
+- **Live preview** — what you see is what the exporter produces; both draw the same markup.
+- **One page** — if the content spills over, it tightens the spacing and the type (down to about
+  9 pt) until it fits, and tells you plainly when it can't.
 - **Written for the machines that read it first** — one column, real selectable text, standard
   headings, no ligature glyphs, URLs that survive copy-and-paste.
 - **Coaching as you type** — write "Responsible for the billing APIs" and it answers: *lead with what
@@ -23,60 +33,46 @@ storage so a reload doesn't lose it, and **Save a copy** hands you a file you ca
 
 ## Formats
 
-| Format | How it works |
+| Format | How it's made |
 |---|---|
-| **PDF** | Opens your browser's print dialog — choose *Save as PDF*. Untick "Headers and footers" so the page URL doesn't print. The text stays real text, which is what resume scanners need. |
-| **Word (.docx)** | Built in the browser and downloaded. Opens in Word, Pages or Google Docs. |
+| **PDF** | Rendered by Chromium: selectable text, working links, exact page fitting, and none of the URL/date headers a browser's print dialog stamps on. |
+| **Word (.docx)** | A real Word document — editable in Word, Pages or Google Docs. |
 
-Want Markdown, plain text, HTML or PNG as well? The command-line version below produces all of them.
-
-## Run it yourself
-
-It's a static site — any web server will do:
-
-```bash
-python3 -m http.server -d site 8000   # then open http://localhost:8000
-```
-
-## Deploy your own
-
-The whole app is the `site/` folder, so hosting is free on any static host.
-
-**Vercel:** import the repository, and it picks up `vercel.json` (which sets the output directory to
-`site`). No build step, no environment variables.
-
-**Anywhere else:** upload `site/` — Cloudflare Pages, Netlify, GitHub Pages and S3 all work the same
-way. Note that Vercel's free Hobby plan is for non-commercial use, so if you add advertising or
-donations you'll need their Pro plan or a host whose free tier allows it.
+The command line below adds HTML, Markdown, plain text and PNG.
 
 ## The command line
 
-The repository also carries a Python version for people who'd rather keep their resume as a file.
-It renders with a real browser engine, so it exports **PDF, Word, HTML, Markdown, plain text and
-PNG**, and it can compare a resume with a job description.
-
 ```bash
-./resumesmith build resumes/example.yaml -f pdf,docx
-./resumesmith check resumes/example.yaml         # the same review, in your terminal
-./resumesmith match resumes/example.yaml jd.txt  # which skills a job asks for that you don't show
-./resumesmith                                    # a menu, if you prefer
+./resumesmith build resumes/example.yaml -f pdf,docx   # or html, md, txt, png, or all
+./resumesmith check resumes/example.yaml               # the wording review, in your terminal
+./resumesmith match resumes/example.yaml jd.txt        # skills a job asks for that you don't show
+./resumesmith new                                      # build one by answering questions
 ```
 
 `resumes/example.yaml` documents every field. Inside any text, `**bold**` and `[text](https://link)`
 work; dates accept `Mar 2022`, `2022-03`, `2022` or `present`.
 
-## Working on it
+## Hosting it for other people
+
+ResumeSmith needs Python and a Chromium install to render, so it wants a container host — Render,
+Fly.io, Railway and friends — with about 1 GB of memory, rather than a static host like GitHub Pages.
+
+A purely static build is possible but costs you the thing that makes this worth using: without a
+renderer, the PDF has to come from the visitor's own print dialog, which stamps the page URL, the
+date and a page number across the top and bottom of the resume. That trade isn't worth making.
+
+## How it's put together
+
+- `site/` — the page: `app.js` (the form and the wiring), `resume.js` (draws the preview),
+  `review.js` (the wording check), `themes/*.css` (the designs).
+- `src/resumesmith/` — the renderer and the command line, sharing `site/themes/`.
+- The preview and the exporter must agree: `site/resume.js` is a port of the Python renderer, and a
+  check renders `resumes/example.yaml` both ways and compares the markup.
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/bin/python -m pytest -q
 ```
-
-- `site/` — the browser app. `resume.js` renders, `review.js` checks the wording, `docx.js` writes
-  the Word file, `app.js` is the page itself, `themes/*.css` are the designs.
-- `src/resumesmith/` — the Python command line, which shares those same theme files.
-- Both renderers are kept in step: their HTML output is compared against each other, so a change to
-  one without the other shows up immediately.
 
 ## Licence
 
