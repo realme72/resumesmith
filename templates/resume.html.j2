@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ r.basics.name }} – Resume</title>
+<meta name="author" content="{{ r.basics.name }}">
+<style>
+:root { --s: {{ scale }}; --accent: {{ r.settings.accent }}; --page-w: {{ page_w }}; --page-h: {{ page_h }}; --margin: {{ margin }}mm; }
+{{ css }}
+</style>
+</head>
+<body class="theme-{{ r.settings.theme }}{% if bare %} bare{% endif %}">
+<main class="sheet">
+  <header class="head">
+    <div class="id">
+      <h1 class="name">{{ r.basics.name }}</h1>
+      {% if r.basics.title %}<p class="headline">{{ r.basics.title }}</p>{% endif %}
+    </div>
+    {% if contact %}
+    <div class="contact">
+      {% for line in contact %}
+      <p class="contact-line">
+        {%- for text, href in line -%}
+        {% if not loop.first %}<span class="sep"> · </span>{% endif %}<span class="ci">{% if href %}<a href="{{ href }}">{{ text }}</a>{% else %}{{ text }}{% endif %}</span>
+        {%- endfor -%}
+      </p>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </header>
+
+{% for key, title in sections %}
+  <section class="section section-{{ key.split(':')[0] }}">
+    <h2 class="section-title">{{ title }}</h2>
+  {% if key == "summary" %}
+    <p class="summary">{{ r.summary|md }}</p>
+
+  {% elif key == "skills" %}
+    <div class="skills">
+    {% for g in r.skills %}
+      <p class="skill"><span class="skill-cat">{{ g.category }}:</span> {{ g.items|join(", ") }}</p>
+    {% endfor %}
+    </div>
+
+  {% elif key == "experience" %}
+    {% for g in job_groups %}
+    <div class="entry">
+      <div class="row">
+        <span class="org">{% if g.url %}<a href="{{ g.url|url }}">{{ g.company }}</a>{% else %}{{ g.company }}{% endif %}</span>
+        {% if g.location %}<span class="loc">{{ g.location }}</span>{% endif %}
+      </div>
+      {% for j in g.jobs %}
+      <div class="role-block">
+        <div class="row">
+          <span class="role">{{ j.role }}</span>
+          <span class="date">{{ j.start|daterange(j.end) }}</span>
+        </div>
+        {% if j.summary %}<p class="blurb">{{ j.summary|md }}</p>{% endif %}
+        {% if j.bullets %}
+        <ul class="bullets">
+          {% for b in j.bullets %}<li>{{ b|md }}</li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+        {% if j.tech %}<p class="tech"><span class="tech-label">Tech:</span> {{ j.tech|join(", ") }}</p>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+
+  {% elif key == "projects" %}
+    {% for p in r.projects %}
+    <div class="entry">
+      <div class="row">
+        <span><span class="org">{% if p.url %}<a href="{{ p.url|url }}">{{ p.name }}</a>{% else %}{{ p.name }}{% endif %}</span>
+          {%- if p.tech %}<span class="sep"> | </span><span class="stack">{{ p.tech|join(", ") }}</span>{% endif %}</span>
+        {% if p.start or p.end %}<span class="date">{{ p.start|daterange(p.end) }}</span>{% endif %}
+      </div>
+      {% if p.description %}<p class="blurb">{{ p.description|md }}</p>{% endif %}
+      {% if p.bullets %}
+      <ul class="bullets">
+        {% for b in p.bullets %}<li>{{ b|md }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+    {% endfor %}
+
+  {% elif key == "education" %}
+    {% for e in r.education %}
+    <div class="entry">
+      <div class="row">
+        <span class="org">{{ e.school }}</span>
+        {% if e.location %}<span class="loc">{{ e.location }}</span>{% endif %}
+      </div>
+      <div class="row">
+        <span class="role">{{ e.degree }}{% if e.score %}<span class="sep"> — </span><span class="score">{{ e.score }}</span>{% endif %}</span>
+        {% if e.start or e.end %}<span class="date">{{ e.start|daterange(e.end) }}</span>{% endif %}
+      </div>
+      {% if e.bullets %}
+      <ul class="bullets">
+        {% for b in e.bullets %}<li>{{ b|md }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+    {% endfor %}
+
+  {% elif key == "certifications" %}
+    <ul class="bullets list">
+    {% for c in r.certifications %}
+      <li><div class="row"><span><span class="cert">{% if c.url %}<a href="{{ c.url|url }}">{{ c.name }}</a>{% else %}{{ c.name }}{% endif %}</span>{% if c.issuer %}<span class="sep"> — </span>{{ c.issuer }}{% endif %}</span>
+        {% if c.date %}<span class="date">{{ c.date|daterange(None) }}</span>{% endif %}</div></li>
+    {% endfor %}
+    </ul>
+
+  {% elif key == "achievements" %}
+    <ul class="bullets list">
+    {% for a in r.achievements %}<li>{{ a|md }}</li>
+    {% endfor %}
+    </ul>
+
+  {% else %}
+    <ul class="bullets list">
+    {% for item in r.extra[key.split(':')[1]|int].items %}<li>{{ item|md }}</li>
+    {% endfor %}
+    </ul>
+  {% endif %}
+  </section>
+{% endfor %}
+</main>
+</body>
+</html>

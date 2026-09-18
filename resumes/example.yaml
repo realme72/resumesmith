@@ -1,0 +1,89 @@
+# Example resume (a made-up person). Copy this file, replace the details, then:
+#   ./resumesmith build resumes/your-name.yaml
+#
+# - Inside any text, **bold** and [text](https://link) work. Bold one key number per bullet at most.
+# - Dates: Mar 2022, 2022-03, 2022 or present.
+# - Two roles in a row at the same company (a promotion) print under one company heading.
+
+basics:
+  name: Aarav Mehta
+  title: Senior Backend Engineer
+  email: aarav.mehta@example.com
+  phone: +91 98765 43210
+  location: Bengaluru, India
+  links:
+    - https://linkedin.com/in/aarav-mehta-example
+    - https://github.com/aarav-example
+
+summary: >-
+  Backend engineer with 6 years of experience building high-throughput payment and logistics
+  systems in Python and Go. Led the ledger re-architecture that took merchant settlement from
+  T+2 to under 15 minutes. Happiest turning slow, fragile services into boring, reliable ones.
+
+skills:
+  Languages: Python, Go, SQL, TypeScript
+  Backend: Django, FastAPI, gRPC, REST, Celery
+  Data: PostgreSQL, Redis, Kafka, Elasticsearch
+  Cloud & DevOps: AWS (ECS, Lambda, RDS), Docker, Kubernetes, Terraform, GitHub Actions
+  Practices: System design, observability (Prometheus, Grafana), TDD, code review
+
+experience:
+  - company: Finlo Payments
+    role: Senior Software Engineer
+    location: Bengaluru
+    start: Apr 2023
+    end: present
+    bullets:
+      - Led the re-architecture of the settlement ledger onto Kafka and PostgreSQL, moving payouts from T+2 to **under 15 minutes** for 2M+ merchants
+      - Cut p99 latency of the payments API from 850 ms to 190 ms with read-through Redis caching and by removing N+1 queries
+      - Designed idempotent retry handling that ended duplicate payouts (about 40 a month) and saved ₹1.2 Cr a year in reversals
+      - Mentored 4 engineers and ran weekly design reviews; two were promoted within a year
+    tech: Python, Go, Kafka, PostgreSQL, Redis, AWS, Kubernetes
+  - company: Finlo Payments
+    role: Software Engineer
+    start: Jul 2021
+    end: Mar 2023
+    bullets:
+      - Built the merchant onboarding service (FastAPI, Celery) that verifies KYC documents in 3 minutes instead of 2 days
+      - Automated reconciliation with 3 banking partners, replacing a 6-hour daily spreadsheet process
+  - company: ShipKart
+    role: Software Engineer
+    location: Pune
+    start: Jun 2019
+    end: Jun 2021
+    bullets:
+      - Wrote the route-batching engine that groups 50K daily deliveries, cutting fuel spend 18%
+      - Moved 30 cron jobs to Airflow with alerting, so failed jobs are caught in minutes instead of days
+      - Introduced contract tests across 12 microservices, reducing release rollbacks by 60%
+    tech: Python, Django, Airflow, MySQL, Docker
+
+projects:
+  - name: pgwatch-lite
+    url: https://github.com/aarav-example/pgwatch-lite
+    tech: Go, PostgreSQL, Grafana
+    bullets:
+      - Open-source Postgres slow-query monitor with 1.4K GitHub stars, running in production at 30+ companies
+
+education:
+  - school: National Institute of Technology, Tiruchirappalli
+    degree: B.Tech, Computer Science and Engineering
+    location: Tiruchirappalli
+    start: 2015
+    end: 2019
+    score: CGPA 8.4/10
+
+certifications:
+  - name: AWS Certified Solutions Architect – Associate
+    issuer: Amazon Web Services
+    date: Nov 2022
+
+achievements:
+  - 'Talk: "Idempotency for people who move money", Bengaluru Python meetup, 2024'
+  - Won first place out of 400+ teams at a national fintech hackathon, 2020
+
+settings:
+  theme: classic        # classic, modern or compact
+  accent: "#1f4e79"     # used by modern and compact
+  page: A4              # or Letter
+  one_page: true        # tightens spacing a little if needed to fit one page
+  formats: [pdf, docx]  # default formats when you don't choose

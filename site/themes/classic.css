@@ -1,0 +1,21 @@
+/* Classic — serif, centred header, black and white. Safe for any company and every ATS. */
+:root {
+  --font: Charter, "Bitstream Charter", "Iowan Old Style", Georgia, "Times New Roman", serif;
+  --fs: 10.5pt;
+  --lh: 1.3;
+  --ink: #161616;
+  --muted: #3f3f3f;
+  --rule: #161616;
+}
+
+.head { text-align: center; }
+.name { font-size: 2.3rem; letter-spacing: 0.02em; }
+.headline { font-style: italic; }
+.contact .sep { color: var(--muted); }
+
+/* Uppercase rather than font-variant: small-caps — faked small caps come out of the PDF as "S UMMARY",
+   which ATS parsers don't recognise as a heading. */
+.section-title {
+  font-size: 0.98rem;
+  letter-spacing: 0.09em;
+}

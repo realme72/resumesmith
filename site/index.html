@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ResumeSmith — a free resume builder that keeps your data</title>
+<meta name="description" content="Write a polished, ATS-friendly resume in your browser. Nothing is uploaded: your details stay on your own machine.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='13' font-size='13'%3E%F0%9F%93%84%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="app.css">
+</head>
+<body data-token="{{TOKEN}}">
+
+<header class="topbar">
+  <div class="brand">ResumeSmith</div>
+  <div class="controls">
+    <label>Design <select id="theme" class="select"></select></label>
+    <label>Accent <input type="color" id="accent" class="color" value="#1f4e79"></label>
+    <label>Paper
+      <select id="page" class="select">
+        <option value="A4">A4</option>
+        <option value="Letter">Letter</option>
+      </select>
+    </label>
+    <label class="check"><input type="checkbox" id="one_page" checked> Fit one page</label>
+  </div>
+  <div class="files">
+    <input type="file" id="open-file" accept=".json,application/json" hidden>
+    <button type="button" id="open-data" class="btn">Open</button>
+    <button type="button" id="download-data" class="btn">Save a copy</button>
+    <button type="button" id="new-resume" class="btn">New</button>
+  </div>
+</header>
+
+<main class="layout">
+  <section class="form-panel" id="form" aria-label="Your details"></section>
+
+  <section class="preview-panel">
+    <div class="preview-head">
+      <span id="page-badge" class="badge">—</span>
+      <span id="status" class="status"></span>
+      <button type="button" id="review-toggle" class="btn ghost">Review <span id="review-count" class="pill">0</span></button>
+    </div>
+    <p id="error" class="error" hidden></p>
+    <p id="hidden-note" class="note" hidden></p>
+    <div class="paper-wrap" id="paper-wrap">
+      <div id="paper"><iframe id="preview" title="Resume preview"></iframe></div>
+    </div>
+    <aside id="review" class="review" hidden></aside>
+  </section>
+</main>
+
+<footer class="exportbar">
+  <div class="formats" id="formats"></div>
+  <div class="export-actions">
+    <span id="export-note" class="status"></span>
+    <button type="button" id="export" class="btn primary">Export</button>
+  </div>
+</footer>
+
+<p class="privacy">
+  Everything here happens in your browser — your details are kept on this device only, never uploaded.
+  Use <b>Save a copy</b> to keep a file of your own.
+</p>
+
+<!-- offscreen: one frame measures the page fit, the other feeds the print dialog -->
+<iframe id="ruler" class="offscreen" title="Measuring"></iframe>
+<iframe id="printer" class="offscreen" title="Printing"></iframe>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,98 @@
+/* Layout shared by every theme. Themes set the variables and restyle a few pieces.
+   Every size is in rem/em so the whole page scales with --s when fitting to one page. */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  font-size: calc(var(--fs, 10.5pt) * var(--s, 1));
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+body {
+  margin: 0;
+  color: var(--ink, #1a1a1a);
+  font-family: var(--font, Georgia, serif);
+  line-height: var(--lh, 1.3);
+  /* ligatures turn "fi" into one glyph that some ATS parsers read as garbage */
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0, "clig" 0;
+  font-kerning: normal;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; text-decoration: none; }
+h1, h2, p, ul { margin: 0; }
+strong { font-weight: 700; }
+
+/* ---------- header ---------- */
+.head { margin-bottom: 0.75rem; }
+.name { font-size: 2.2rem; line-height: 1.05; font-weight: 700; }
+.headline { font-size: 1.1rem; margin-top: 0.25rem; color: var(--muted, #444); }
+.contact { margin-top: 0.4rem; font-size: 0.93rem; color: var(--muted, #444); }
+.contact-line + .contact-line { margin-top: 0.1rem; }
+.contact .ci { white-space: nowrap; }
+.contact .sep { color: var(--rule, #999); }
+
+/* ---------- sections ---------- */
+.section { margin-top: 0.8rem; }
+.section-title {
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding-bottom: 0.15rem;
+  margin-bottom: 0.4rem;
+  border-bottom: 0.7pt solid var(--rule, #999);
+  break-after: avoid;
+}
+
+.entry { margin-top: 0.5rem; }
+.entry:first-of-type, .section-title + .entry { margin-top: 0; }
+.role-block + .role-block { margin-top: 0.35rem; }
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  break-after: avoid;
+}
+.row > :last-child:not(:first-child) { white-space: nowrap; flex-shrink: 0; }
+
+.org { font-weight: 700; }
+.role { font-style: italic; }
+.date, .loc { color: var(--muted, #444); font-size: 0.95rem; font-variant-numeric: tabular-nums; }
+.stack { color: var(--muted, #444); font-style: italic; font-size: 0.95rem; }
+.sep { color: var(--muted, #444); }
+.blurb { margin-top: 0.1rem; color: var(--muted, #444); font-style: italic; }
+
+.bullets { padding-left: 1.1rem; margin-top: 0.15rem; }
+.bullets li { margin-top: 0.12rem; padding-left: 0.15rem; }
+/* no single word stranded on a bullet's last line */
+.bullets li, .summary, .blurb { text-wrap: pretty; }
+.bullets li::marker { color: var(--muted, #444); }
+.bullets.list { margin-top: 0; }
+.bullets .row { display: flex; }
+
+.tech { margin-top: 0.18rem; font-size: 0.93rem; color: var(--muted, #444); }
+.tech-label { font-weight: 700; color: var(--ink, #1a1a1a); }
+
+.skills .skill + .skill { margin-top: 0.12rem; }
+.skill-cat { font-weight: 700; }
+
+/* ---------- on screen (the .html and .png exports): show it as a sheet of paper ---------- */
+@media screen {
+  body { background: #e8e8ec; padding: 24px 12px; }
+  .sheet {
+    background: #fff;
+    width: var(--page-w);
+    max-width: 100%;
+    min-height: var(--page-h);
+    margin: 0 auto;
+    padding: var(--margin);
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.12), 0 10px 30px rgb(0 0 0 / 0.08);
+  }
+  body.bare { background: #fff; padding: 0; }
+  body.bare .sheet { box-shadow: none; margin: 0; }
+}

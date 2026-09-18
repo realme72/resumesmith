@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Runs ResumeSmith from anywhere; sets itself up on first run.
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ ! -x "$DIR/.venv/bin/python" ]; then
+  echo "First run: installing ResumeSmith (about a minute)…"
+  python3 -m venv "$DIR/.venv" && "$DIR/.venv/bin/pip" install -q -r "$DIR/requirements.txt" || exit 1
+fi
+PYTHONPATH="$DIR/src${PYTHONPATH:+:$PYTHONPATH}" exec "$DIR/.venv/bin/python" -m resumesmith "$@"
