@@ -8,6 +8,11 @@ Two front ends over one resume format:
 - `src/resumesmith/` — the renderer and command line: `./resumesmith build FILE -f pdf,docx
   [-t theme|all]`, `check`, `match`, `serve`, `new`. Renders with Playwright/Chromium.
 
+**This server is meant to face the internet, so it touches no files on behalf of a visitor.** There
+are deliberately no save/load/file-listing endpoints; `/api/export` is rate limited per caller and
+renders behind `RENDER_SLOTS`; the API is same-origin only. Don't add an endpoint that reads or
+writes the server's disk — the draft belongs in the browser and finished files in memory.
+
 **Exports go through the Python renderer, never the browser's print dialog.** That dialog stamps the
 page URL, date and page number onto the resume and makes the person click through it; a PDF must come
 out of Chromium clean, in one click. This was tried the other way and reverted.

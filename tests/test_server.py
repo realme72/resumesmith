@@ -18,14 +18,18 @@ SAMPLE = {
 }
 
 
-@pytest.fixture
-def dash(tmp_path):
-    board = server.Dashboard(resumes_dir=tmp_path / "resumes")
-    board.resumes_dir.mkdir(parents=True)
+def running(board):
     httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.bind_handler(board))
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    return httpd, f"http://127.0.0.1:{httpd.server_address[1]}"
+
+
+@pytest.fixture
+def dash():
+    board = server.Dashboard()
+    httpd, base = running(board)
     try:
-        yield f"http://127.0.0.1:{httpd.server_address[1]}", board
+        yield base, board
     finally:
         httpd.shutdown()
         httpd.server_close()
@@ -136,13 +140,40 @@ def test_unknown_format_is_rejected(dash):
     assert "unknown format" in e.value.read().decode()
 
 
-def test_save_asks_before_replacing_then_loads_back(dash):
+def test_nothing_reaches_the_server_s_own_files(dash):
+    """A served copy must not hand out, or accept, resumes stored beside it."""
     base, board = dash
-    assert post(base, "/api/save", {"resume": SAMPLE, "stem": "riya-sen"}, board.token)["file"] == "riya-sen.yaml"
-    assert post(base, "/api/save", {"resume": SAMPLE, "stem": "riya-sen"}, board.token)["needs_confirm"] is True
-    loaded = post(base, "/api/load", {"file": "riya-sen.yaml"}, board.token)
-    assert loaded["resume"]["basics"]["name"] == "Riya Sen"
-    assert loaded["stem"] == "riya-sen"
+    request = urllib.request.Request(base + "/api/meta", headers={"X-ResumeSmith-Token": board.token})
+    with urllib.request.urlopen(request) as response:
+        assert set(json.load(response)) == {"themes", "formats"}
+    for path in ("/api/save", "/api/load"):
+        with pytest.raises(urllib.error.HTTPError) as e:
+            post(base, path, {"resume": SAMPLE, "file": "riya-sen.yaml"}, board.token)
+        assert e.value.code == 404
+
+
+def test_one_visitor_cannot_hog_the_renderer():
+    board = server.Dashboard(exports=server.RateLimit(allowance=1))
+    httpd, base = running(board)
+    try:
+        post(base, "/api/export", {"resume": SAMPLE, "formats": ["txt"]}, board.token)
+        with pytest.raises(urllib.error.HTTPError) as e:
+            post(base, "/api/export", {"resume": SAMPLE, "formats": ["txt"]}, board.token)
+        assert e.value.code == 429
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+
+
+def test_only_this_site_s_own_page_may_call_the_api(dash):
+    base, board = dash
+    request = urllib.request.Request(
+        base + "/api/preview", data=json.dumps({"resume": SAMPLE}).encode(),
+        headers={"Content-Type": "application/json", "X-ResumeSmith-Token": board.token,
+                 "Origin": "https://somewhere-else.example"})
+    with pytest.raises(urllib.error.HTTPError) as e:
+        urllib.request.urlopen(request)
+    assert e.value.code == 403
 
 
 def test_an_edited_source_file_is_noticed(tmp_path):

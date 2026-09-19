@@ -54,8 +54,20 @@ work; dates accept `Mar 2022`, `2022-03`, `2022` or `present`.
 
 ## Hosting it for other people
 
-ResumeSmith needs Python and a Chromium install to render, so it wants a container host — Render,
-Fly.io, Railway and friends — with about 1 GB of memory, rather than a static host like GitHub Pages.
+ResumeSmith renders with Chromium, so it wants a container host — Render, Fly.io, Railway and
+friends — with about 1 GB of memory, rather than a static host like GitHub Pages.
+
+```bash
+docker build -t resumesmith .
+docker run -p 8000:8000 resumesmith        # then open http://localhost:8000
+```
+
+The image reads `PORT` (and `HOST`, default `0.0.0.0`), which is what those hosts set for you.
+
+A served copy keeps nothing. There is no database and no upload: the visitor's draft stays in their
+browser, a finished file lives in memory only until it's fetched, and there are deliberately no
+endpoints that read or write files beside the server. Exports are limited per visitor and only a
+couple render at a time, so one caller can't tie up the machine.
 
 A purely static build is possible but costs you the thing that makes this worth using: without a
 renderer, the PDF has to come from the visitor's own print dialog, which stamps the page URL, the

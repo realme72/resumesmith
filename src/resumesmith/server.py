@@ -1,8 +1,9 @@
-"""The local dashboard: a form on the left, a live preview on the right, formats along the bottom.
+"""The dashboard: a form on the left, a live preview on the right, formats along the bottom.
 
-Everything runs on 127.0.0.1 and renders with the same code the command line uses, so the preview
-is the real thing. Every API call must carry the token printed into the page, which keeps other
-sites in the browser from talking to this server.
+The same code serves one person on 127.0.0.1 and a site on the open internet, so it holds no
+resumes: the page keeps the draft, and finished files live in memory only until they're fetched.
+Every API call carries the token printed into the page — that stops other sites in the browser
+calling this server, not the visitor, who can of course read their own page.
 """
 
 from __future__ import annotations
@@ -19,13 +20,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-import yaml
-
 from .export import FORMATS, parse_formats, render_formats
 from .lint import bullet_tips, check
 from .model import ROOT, ResumeError, available_themes, parse, prune
 from .render_html import BrowserMissing, render_html
-from .wizard import save as save_resume, slug
 
 SITE = ROOT / "site"
 MAX_BODY = 4_000_000
@@ -75,12 +73,39 @@ class Downloads:
             del self._items[min(self._items, key=lambda t: self._items[t][2])]
 
 
+class RateLimit:
+    """A per-caller allowance, so one visitor can't keep the renderer to themselves."""
+
+    def __init__(self, allowance: int = 60, window: float = 3600):
+        self.allowance = allowance
+        self.window = window
+        self._seen: dict[str, list[float]] = {}
+        self._lock = threading.Lock()
+
+    def allow(self, caller: str) -> bool:
+        now = time.time()
+        with self._lock:
+            recent = [when for when in self._seen.get(caller, []) if now - when < self.window]
+            self._seen[caller] = recent
+            if len(recent) >= self.allowance:
+                return False
+            recent.append(now)
+            if len(self._seen) > 5000:  # forget the callers who have gone quiet
+                for key in [k for k, v in self._seen.items() if not v or now - v[-1] > self.window]:
+                    del self._seen[key]
+            return True
+
+
+# Each render starts a Chromium of its own, so let a few queue rather than flattening the machine.
+RENDER_SLOTS = threading.Semaphore(2)
+
+
 @dataclass
 class Dashboard:
-    """State shared by every request: the token, and the files waiting to be downloaded."""
-    resumes_dir: Path = ROOT / "resumes"
+    """State shared by every request: the token, the finished files, and the export allowance."""
     token: str = field(default_factory=lambda: uuid.uuid4().hex)
     downloads: Downloads = field(default_factory=Downloads)
+    exports: RateLimit = field(default_factory=RateLimit)
 
 
 def bullet_hints(data: dict) -> dict[str, list[dict]]:
@@ -171,7 +196,10 @@ class Handler(BaseHTTPRequestHandler):
         if self.headers.get("X-ResumeSmith-Token") != self.dash.token:
             return False
         origin = self.headers.get("Origin")
-        return origin is None or origin.startswith(("http://127.0.0.1", "http://localhost"))
+        if origin is None:
+            return True
+        # Only this site's own page may call the API — whatever address it is being served on.
+        return origin.split("//", 1)[-1] == self.headers.get("Host", "")
 
     def _resume(self, payload: dict):
         return parse(prune(payload.get("resume") or {}))
@@ -196,8 +224,7 @@ class Handler(BaseHTTPRequestHandler):
         if url.path == "/api/meta":
             if not self._authed():
                 return self._json(403, {"error": "this page is out of date — reload it"})
-            files = sorted(p.name for p in self.dash.resumes_dir.glob("*.yaml"))
-            return self._json(200, {"themes": available_themes(), "formats": FORMATS, "files": files})
+            return self._json(200, {"themes": available_themes(), "formats": FORMATS})
         self._json(404, {"error": "not found"})
 
     def do_POST(self) -> None:
@@ -210,10 +237,6 @@ class Handler(BaseHTTPRequestHandler):
                 return self._preview(payload)
             if url.path == "/api/export":
                 return self._export(payload)
-            if url.path == "/api/save":
-                return self._save(payload)
-            if url.path == "/api/load":
-                return self._load(payload)
         except (ResumeError, ValueError) as e:
             return self._json(400, {"error": str(e)})
         except BrowserMissing as e:
@@ -231,31 +254,16 @@ class Handler(BaseHTTPRequestHandler):
         })
 
     def _export(self, payload: dict) -> None:
+        if not self.dash.exports.allow(self.client_address[0]):
+            return self._json(429, {"error": "that's a lot of exports — give it a few minutes"})
         r = self._resume(payload)
         formats = parse_formats(",".join(payload.get("formats") or []))
-        result = render_formats(r, formats)  # in memory; the browser saves them where it saves downloads
+        with RENDER_SLOTS:  # in memory; the browser saves them where it saves downloads
+            result = render_formats(r, formats)
         files = [{"name": f.name, "format": f.format, "size": len(f.data),
                   "url": f"/download?id={self.dash.downloads.add(f.name, f.data)}"} for f in result.files]
         self._json(200, {"files": files, "pages": result.pages, "scale": result.scale,
                          "fitted": result.fitted, "notes": result.notes})
-
-    def _save(self, payload: dict) -> None:
-        data = prune(payload.get("resume") or {})
-        r = parse(data)
-        path = self.dash.resumes_dir / f"{slug(payload.get('stem') or r.basics.name)}.yaml"
-        if path.exists() and not payload.get("overwrite"):
-            return self._json(200, {"needs_confirm": True, "file": path.name})
-        save_resume(data, path)
-        self._json(200, {"file": path.name, "path": str(path)})
-
-    def _load(self, payload: dict) -> None:
-        name = Path(str(payload.get("file") or "")).name
-        path = self.dash.resumes_dir / name
-        if path.suffix != ".yaml" or not path.is_file():
-            raise ResumeError(f"no such resume file: {name}")
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
-        parse(data, path.name)  # fail here rather than with a blank form
-        self._json(200, {"resume": data, "stem": path.stem})
 
 
 def bind_handler(dash: Dashboard) -> type[Handler]:
@@ -292,22 +300,37 @@ def watch_sources(interval: float = 1.0) -> None:
 
 
 def serve(port: int = 8765, open_browser: bool = True, host: str = "127.0.0.1", reload: bool = True) -> int:
+    """Serve the dashboard — on your own machine, or wherever a host puts it.
+
+    A host announces the address it expects through HOST and PORT. There we bind exactly that,
+    open no browser, and leave the code alone: a container ships fixed files, so watching them for
+    changes only risks restarting a live site.
+    """
+    hosted = "PORT" in os.environ
+    if hosted:
+        host = os.environ.get("HOST", "0.0.0.0")
+        port = int(os.environ["PORT"])
+        open_browser = reload = False
+
     dash = Dashboard()
     httpd = None
-    for candidate in range(port, port + 10):
+    for candidate in [port] if hosted else range(port, port + 10):
         try:
             httpd = ThreadingHTTPServer((host, candidate), bind_handler(dash))
             break
         except OSError:
             continue
     if httpd is None:
-        print(f"Ports {port}–{port + 9} are all busy. Try: ./resumesmith serve --port 9000", flush=True)
+        print(f"Couldn't listen on {host}:{port}" if hosted
+              else f"Ports {port}–{port + 9} are all busy. Try: ./resumesmith serve --port 9000",
+              flush=True)
         return 1
 
     url = f"http://{host}:{httpd.server_address[1]}/"
     # flush: this output is often piped or backgrounded, where Python would otherwise hold it back
     print(f"ResumeSmith dashboard: {url}", flush=True)
-    print("Leave this running while you work; press Ctrl+C to stop.", flush=True)
+    if not hosted:
+        print("Leave this running while you work; press Ctrl+C to stop.", flush=True)
     if reload:
         print("Code changes restart it by themselves.", flush=True)
         threading.Thread(target=watch_sources, daemon=True).start()
