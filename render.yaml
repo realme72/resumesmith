@@ -1,0 +1,12 @@
+# Render blueprint: one web service, built from the Dockerfile in this repository.
+# Render sets PORT; the server reads it (see serve() in src/resumesmith/server.py).
+services:
+  - type: web
+    name: resumesmith
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    region: singapore          # nearest of Render's regions to most of its visitors
+    plan: free                 # 512MB of memory: enough to try, tight for Chromium.
+                               # If exports start failing under load, move to 1c-2g.
+    healthCheckPath: /
+    autoDeployTrigger: commit  # every push to main redeploys

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import os
 from dataclasses import dataclass
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -44,11 +45,16 @@ class Browser:
         from playwright.sync_api import Error, sync_playwright
 
         self._pw = sync_playwright().start()
+        # A container gives Chromium a 64MB /dev/shm and no GPU; writing to /tmp instead keeps it
+        # from dying part-way through a render. Hosted, it also can't have the sandbox's privileges.
+        args = ["--disable-dev-shm-usage", "--disable-gpu"]
+        if os.environ.get("PORT"):
+            args.append("--no-sandbox")
         try:
-            self._browser = self._pw.chromium.launch()
+            self._browser = self._pw.chromium.launch(args=args)
         except Error:
             try:  # Playwright's own Chromium isn't downloaded — fall back to installed Google Chrome
-                self._browser = self._pw.chromium.launch(channel="chrome")
+                self._browser = self._pw.chromium.launch(channel="chrome", args=args)
             except Error:
                 self._pw.stop()
                 raise BrowserMissing("PDF/PNG export needs a browser. Install Google Chrome, or run: "
