@@ -4,7 +4,7 @@
    localStorage, the resume is rendered here, and exports are built here and handed to the browser
    to save. There is no account and no server-side copy. */
 
-import { outputStem, prepare, renderHtml, themeCss } from "./resume.js";
+import { prepare, renderHtml, themeCss } from "./resume.js";
 import { bulletTips, review } from "./review.js";
 
 const THEMES = ["classic", "compact", "modern"];
@@ -666,15 +666,6 @@ function contentHeight(doc) {
 
 /* ---------- saving files ---------- */
 
-function saveBlob(name, content, type) {
-  const url = URL.createObjectURL(content instanceof Blob ? content : new Blob([content], { type }));
-  const link = el("a", { href: url, download: name });
-  document.body.append(link);
-  link.click();
-  link.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 10_000);
-}
-
 const setExportNote = (text, bad = false) => {
   const note = $("#export-note");
   note.textContent = text;
@@ -712,34 +703,6 @@ $("#export").addEventListener("click", async () => {
   }
 });
 
-/* ---------- your data, as a file ---------- */
-
-$("#download-data").addEventListener("click", () => {
-  const { resume } = prepare(state);
-  const name = outputStem(resume).replace(/_Resume$/, "") || "resume";
-  saveBlob(`${name}.json`, `${JSON.stringify(state, null, 2)}\n`, "application/json");
-  setStatus("Saved a copy of your details");
-});
-
-$("#open-data").addEventListener("click", () => $("#open-file").click());
-
-$("#open-file").addEventListener("change", async (event) => {
-  const file = event.target.files?.[0];
-  if (!file) return;
-  try {
-    state = adapt(JSON.parse(await file.text()));
-    labelsTyped.clear();
-    syncSettings();
-    render();
-    runPreview();
-    setStatus(`Opened ${file.name}`);
-  } catch {
-    setError(`${file.name} isn't a ResumeSmith file — pick a .json you downloaded from here.`);
-  } finally {
-    event.target.value = "";
-  }
-});
-
 $("#new-resume").addEventListener("click", () => {
   if (!confirm("Start a new, empty resume? Anything unsaved is lost.")) return;
   state = blank();
@@ -751,13 +714,7 @@ $("#new-resume").addEventListener("click", () => {
   showEmptyPreview();
   showReview([]);
   showHidden([]);
-});
-
-document.addEventListener("keydown", (event) => {
-  if ((event.metaKey || event.ctrlKey) && event.key === "s") {
-    event.preventDefault();
-    $("#download-data").click();
-  }
+  setExportNote("");  // the last export's message doesn't belong to this empty form
 });
 
 /* ---------- design controls ---------- */

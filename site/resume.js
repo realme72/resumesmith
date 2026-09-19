@@ -296,11 +296,6 @@ export function visibleSections(resume) {
   return out;
 }
 
-export function outputStem(resume) {
-  const name = resume.basics.name.replace(/[^\w\s-]/g, "").trim();
-  return `${name.split(/\s+/).join("_") || "Resume"}_Resume`;
-}
-
 /* ---------- the page itself ---------- */
 
 const tag = (name, cls, inner) => `<${name}${cls ? ` class="${cls}"` : ""}>${inner}</${name}>`;

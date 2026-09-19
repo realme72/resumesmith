@@ -1,7 +1,7 @@
 [project]
 name = "resumesmith"
 version = "0.1.0"
-description = "A polished resume from your details — PDF, Word, HTML, Markdown, text or PNG."
+description = "A polished resume from your details — PDF, Word."
 requires-python = ">=3.11"
 
 [tool.pytest.ini_options]
