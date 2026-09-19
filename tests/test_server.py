@@ -152,13 +152,44 @@ def test_nothing_reaches_the_server_s_own_files(dash):
         assert e.value.code == 404
 
 
+def export_as(base, board, forwarded=None):
+    headers = {"Content-Type": "application/json", "X-ResumeSmith-Token": board.token}
+    if forwarded:
+        headers["X-Forwarded-For"] = forwarded
+    request = urllib.request.Request(
+        base + "/api/export", data=json.dumps({"resume": SAMPLE, "formats": ["txt"]}).encode(),
+        headers=headers)
+    with urllib.request.urlopen(request) as response:
+        return json.load(response)
+
+
 def test_one_visitor_cannot_hog_the_renderer():
     board = server.Dashboard(exports=server.RateLimit(allowance=1))
     httpd, base = running(board)
     try:
-        post(base, "/api/export", {"resume": SAMPLE, "formats": ["txt"]}, board.token)
+        export_as(base, board)
         with pytest.raises(urllib.error.HTTPError) as e:
-            post(base, "/api/export", {"resume": SAMPLE, "formats": ["txt"]}, board.token)
+            export_as(base, board)
+        assert e.value.code == 429
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+
+
+def test_visitors_behind_a_proxy_get_their_own_allowance():
+    """Hosted, every request comes from the proxy — the allowance must still follow the person."""
+    board = server.Dashboard(exports=server.RateLimit(allowance=1))
+    httpd, base = running(board)
+    try:
+        export_as(base, board, forwarded="203.0.113.7")
+        export_as(base, board, forwarded="203.0.113.8")  # a different visitor, not yet spent
+        with pytest.raises(urllib.error.HTTPError) as e:
+            export_as(base, board, forwarded="203.0.113.8")
+        assert e.value.code == 429
+
+        # a caller writing their own header can't dodge it: the proxy's entry is the last one
+        with pytest.raises(urllib.error.HTTPError) as e:
+            export_as(base, board, forwarded="198.51.100.1, 203.0.113.8")
         assert e.value.code == 429
     finally:
         httpd.shutdown()

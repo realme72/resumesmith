@@ -204,6 +204,17 @@ class Handler(BaseHTTPRequestHandler):
     def _resume(self, payload: dict):
         return parse(prune(payload.get("resume") or {}))
 
+    def _caller(self) -> str:
+        """Who is asking, for the export allowance.
+
+        Hosted, every request arrives from the platform's proxy, so counting `client_address` would
+        put the whole internet in one bucket. The proxy appends the address it saw to
+        X-Forwarded-For, which makes the *last* entry the one to trust: anything a caller writes
+        into that header themselves ends up to the left of it.
+        """
+        forwarded = self.headers.get("X-Forwarded-For")
+        return forwarded.split(",")[-1].strip() if forwarded else self.client_address[0]
+
     # ---------- routes ----------
 
     def do_GET(self) -> None:
@@ -254,7 +265,7 @@ class Handler(BaseHTTPRequestHandler):
         })
 
     def _export(self, payload: dict) -> None:
-        if not self.dash.exports.allow(self.client_address[0]):
+        if not self.dash.exports.allow(self._caller()):
             return self._json(429, {"error": "that's a lot of exports — give it a few minutes"})
         r = self._resume(payload)
         formats = parse_formats(",".join(payload.get("formats") or []))
