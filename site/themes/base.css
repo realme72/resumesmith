@@ -64,6 +64,7 @@ strong { font-weight: 700; }
 .role { font-style: italic; }
 .date, .loc { color: var(--muted, #444); font-size: 0.95rem; font-variant-numeric: tabular-nums; }
 .stack { color: var(--muted, #444); font-style: italic; font-size: 0.95rem; }
+.site { color: var(--muted, #444); font-size: 0.95rem; }
 .sep { color: var(--muted, #444); }
 .blurb { margin-top: 0.1rem; color: var(--muted, #444); font-style: italic; }
 

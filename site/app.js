@@ -374,7 +374,8 @@ function projectCard(i, count) {
   const path = `projects.${i}`;
   const project = state.projects[i];
   return card("projects", i, count, project.name || "New project", [
-    row(field("Name", `${path}.name`), field("Link", `${path}.url`, { placeholder: "github.com/you/project" })),
+    row(field("Name", `${path}.name`),
+        field("Link", `${path}.url`, { placeholder: "your site, a demo, or github.com/you/project" })),
     row(field("Tech", `${path}.tech`, { placeholder: "Go, PostgreSQL" }),
         field("Dates", `${path}.end`, { placeholder: "2024 (optional)" })),
     field("One line about it", `${path}.description`, { wide: true }),

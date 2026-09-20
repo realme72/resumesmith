@@ -346,11 +346,14 @@ function sectionBody(resume, key) {
   if (key === "projects") {
     return resume.projects.map((project) => {
       const name = tag("span", "org", linked(project.name, project.url));
+      // the address is spelled out, so it survives being printed and reads as something to visit
+      const site = project.url
+        ? `<span class="sep"> · </span>${tag("span", "site", linked(bareUrl(project.url), project.url))}` : "";
       const stack = project.tech.length
         ? `<span class="sep"> | </span>${tag("span", "stack", escapeHtml(project.tech.join(", ")))}` : "";
       const dates = project.start || project.end ? dateRange(project.start, project.end) : "";
       return tag("div", "entry",
-        entryRow(`<span>${name}${stack}</span>`, dates)
+        entryRow(`<span>${name}${site}${stack}</span>`, dates)
         + (project.description ? tag("p", "blurb", toHtml(project.description)) : "")
         + bulletsBlock(project.bullets));
     }).join("\n");

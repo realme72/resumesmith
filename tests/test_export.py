@@ -39,7 +39,8 @@ def test_pdf_docx_png_html(tmp_path, browser_ok):
     assert (res.pages, res.fitted) == (1, True)
 
     text = PdfReader(tmp_path / f"{STEM}.pdf").pages[0].extract_text()
-    for expected in ("Aarav Mehta", "aarav.mehta@example.com", "Finlo Payments", "Certified"):
+    for expected in ("Aarav Mehta", "aarav.mehta@example.com", "Finlo Payments", "Certified",
+                     "github.com/aarav-example/pgwatch-lite"):  # a project's address is printed, not just linked
         assert expected in text
     assert "ﬁ" not in text  # no "fi" ligature glyph, which trips ATS parsers
     for heading in ("SUMMARY", "EXPERIENCE", "EDUCATION"):  # headings must extract as whole words

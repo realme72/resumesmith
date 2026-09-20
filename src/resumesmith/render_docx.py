@@ -12,7 +12,8 @@ from docx.oxml.ns import qn
 from docx.shared import Inches, Mm, Pt, RGBColor
 
 from .model import Resume
-from .text import contact_lines, date_range, full_url, group_jobs, segments, visible_sections
+from .text import (bare_url, contact_lines, date_range, full_url, group_jobs, segments,
+                   visible_sections)
 
 # Fonts every Word install has, closest to each theme's PDF font.
 LOOKS = {
@@ -169,6 +170,8 @@ class _Writer:
     def projects(self):
         for i, pr in enumerate(self.r.projects):
             left = [(pr.name, {"bold": True, "href": full_url(pr.url) if pr.url else None})]
+            if pr.url:  # spelled out, so it survives printing
+                left.append((f" · {bare_url(pr.url)}", {"color": MUTED, "href": full_url(pr.url)}))
             if pr.tech:
                 left.append((" | " + ", ".join(pr.tech), {"italic": True, "color": MUTED}))
             dates = date_range(pr.start, pr.end) if (pr.start or pr.end) else None

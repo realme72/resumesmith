@@ -10,7 +10,8 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from markupsafe import Markup
 
 from .model import ROOT, THEMES_DIR, Resume
-from .text import contact_lines, date_range, full_url, group_jobs, to_html, visible_sections
+from .text import (bare_url, contact_lines, date_range, full_url, group_jobs, to_html,
+                   visible_sections)
 
 PAGE_SIZES = {"A4": ("210mm", "297mm"), "Letter": ("8.5in", "11in")}
 MIN_SCALE = 0.85  # 10.5pt type never drops below ~9pt
@@ -25,6 +26,7 @@ _env = Environment(loader=FileSystemLoader(ROOT / "templates"), autoescape=selec
 _env.filters["md"] = lambda s: Markup(to_html(s))
 _env.filters["daterange"] = date_range
 _env.filters["url"] = full_url
+_env.filters["bare"] = bare_url
 
 
 def render_html(r: Resume, scale: float = 1.0, margin_mm: float | None = None, bare: bool = False) -> str:

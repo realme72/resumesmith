@@ -74,6 +74,7 @@
     <div class="entry">
       <div class="row">
         <span><span class="org">{% if p.url %}<a href="{{ p.url|url }}">{{ p.name }}</a>{% else %}{{ p.name }}{% endif %}</span>
+          {%- if p.url %}<span class="sep"> · </span><span class="site"><a href="{{ p.url|url }}">{{ p.url|bare }}</a></span>{% endif %}
           {%- if p.tech %}<span class="sep"> | </span><span class="stack">{{ p.tech|join(", ") }}</span>{% endif %}</span>
         {% if p.start or p.end %}<span class="date">{{ p.start|daterange(p.end) }}</span>{% endif %}
       </div>
