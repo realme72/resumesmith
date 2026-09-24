@@ -31,6 +31,18 @@ the bottom. Press **Export** and the files land in your downloads.
   Education. Three designs (classic, modern, compact), your own accent colour, A4 or US Letter.
 - **Links that read well** — paste a LinkedIn address and it prints as "LinkedIn", clickable.
 
+## Starting from a resume you already have
+
+**Upload a resume** reads a `.pdf` or `.docx` and fills the form in, so you can edit what you have
+rather than retyping it. The file is read in your browser and never uploaded.
+
+Treat the result as a head start, not a finished job: dates, job titles and bullet boundaries are
+guessed from layout, and a resume laid out in two columns reads worst of all. Anything it couldn't
+place confidently is left out rather than invented, so check every section.
+
+PDFs are read with [pdf.js](https://mozilla.github.io/pdf.js/) (Mozilla, Apache-2.0), vendored in
+`site/vendor/` so the page calls nobody at runtime.
+
 ## Formats
 
 | Format | How it's made |

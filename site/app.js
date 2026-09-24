@@ -6,6 +6,7 @@
 
 import { prepare, renderHtml, themeCss } from "./resume.js";
 import { bulletTips, review } from "./review.js";
+import { readResume } from "./import.js";
 
 const THEMES = ["classic", "compact", "modern"];
 const FORMATS = {
@@ -701,6 +702,36 @@ $("#export").addEventListener("click", async () => {
     setError(e.message);
   } finally {
     trigger.disabled = false;
+  }
+});
+
+/* ---------- starting from a resume you already have ---------- */
+
+$("#upload").addEventListener("click", () => $("#upload-file").click());
+
+$("#upload-file").addEventListener("change", async (event) => {
+  const file = event.target.files?.[0];
+  event.target.value = "";  // so picking the same file twice still fires
+  if (!file) return;
+  setStatus(`Reading ${file.name}…`);
+  $("#imported-note").hidden = true;
+  try {
+    const found = await readResume(file);
+    state = adapt({ ...found, settings: state.settings });
+    if (!state.experience.length) state.experience = [newJob()];
+    if (!state.education.length) state.education = [newEducation()];
+    if (!state.skills.length) state.skills = [newSkillGroup()];
+    labelsTyped.clear();
+    render();
+    await runPreview();
+    setStatus("");
+    const note = $("#imported-note");
+    note.textContent = `Read ${file.name}. Check every field — dates, titles and bullets often need `
+      + `fixing, and anything it couldn't place is missing rather than guessed.`;
+    note.hidden = false;
+  } catch (e) {
+    setError(e.message);
+    setStatus("");
   }
 });
 

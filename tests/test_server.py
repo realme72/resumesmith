@@ -140,6 +140,13 @@ def test_unknown_format_is_rejected(dash):
     assert "unknown format" in e.value.read().decode()
 
 
+def test_module_scripts_are_served_as_javascript(dash):
+    """A browser refuses a module script offered as application/octet-stream — PDF reading died on it."""
+    base, _ = dash
+    with urllib.request.urlopen(base + "/vendor/pdf.min.mjs") as response:
+        assert response.headers["Content-Type"].startswith("text/javascript")
+
+
 def test_nothing_reaches_the_server_s_own_files(dash):
     """A served copy must not hand out, or accept, resumes stored beside it."""
     base, board = dash

@@ -24,6 +24,8 @@
     <label class="check"><input type="checkbox" id="one_page" checked> Fit one page</label>
   </div>
   <div class="files">
+    <input type="file" id="upload-file" accept=".pdf,.docx" hidden>
+    <button type="button" id="upload" class="btn">Upload a resume</button>
     <button type="button" id="new-resume" class="btn">New</button>
   </div>
 </header>
@@ -39,6 +41,7 @@
     </div>
     <p id="error" class="error" hidden></p>
     <p id="hidden-note" class="note" hidden></p>
+    <p id="imported-note" class="note" hidden></p>
     <div class="paper-wrap" id="paper-wrap">
       <div id="paper"><iframe id="preview" title="Resume preview"></iframe></div>
     </div>

@@ -28,8 +28,10 @@ from .render_html import BrowserMissing, render_html
 SITE = ROOT / "site"
 MAX_BODY = 4_000_000
 TYPES = {".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8",
-         ".js": "text/javascript; charset=utf-8", ".svg": "image/svg+xml", ".json": "application/json",
-         ".png": "image/png", ".ico": "image/x-icon", ".yaml": "text/yaml; charset=utf-8"}
+         ".js": "text/javascript; charset=utf-8", ".mjs": "text/javascript; charset=utf-8",
+         ".svg": "image/svg+xml", ".json": "application/json", ".png": "image/png",
+         ".ico": "image/x-icon", ".yaml": "text/yaml; charset=utf-8"}
+# .mjs matters: a browser refuses a module script served as application/octet-stream.
 
 
 def asset(path: str) -> Path | None:
