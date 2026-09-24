@@ -43,10 +43,27 @@ def post(base, path, payload, token):
         return json.load(response)
 
 
-def test_page_carries_its_token(dash):
+def test_the_builder_carries_its_token(dash):
     base, board = dash
-    page = urllib.request.urlopen(base + "/").read().decode()
+    page = urllib.request.urlopen(base + "/build").read().decode()
     assert board.token in page and "{{TOKEN}}" not in page
+
+
+def test_the_front_door_offers_every_way_in(dash):
+    """/ is the chooser now — the builder moved to /build."""
+    base, _ = dash
+    page = urllib.request.urlopen(base + "/").read().decode()
+    assert "/build?start=speech" in page
+    assert "/build?start=upload" in page
+    assert 'href="/build"' in page
+
+
+def test_a_page_is_never_served_as_a_plain_file(dash):
+    """index.html holds {{TOKEN}}: handed out as an asset it would be an unusable page."""
+    base, _ = dash
+    with pytest.raises(urllib.error.HTTPError) as e:
+        urllib.request.urlopen(base + "/index.html")
+    assert e.value.code == 404
 
 
 def test_api_refuses_a_wrong_token(dash):

@@ -2,8 +2,10 @@
 
 Two front ends over one resume format:
 
-- `site/` — the page served by `./resumesmith serve`: `app.js` is the form and the wiring,
-  `resume.js` draws the preview, `review.js` is the wording check, `themes/*.css` are the designs.
+- `site/` — the pages served by `./resumesmith serve`: `home.html` is the front door on `/`, and
+  `index.html` the builder on `/build`. `app.js` is the form and the wiring, `resume.js` draws the
+  preview, `review.js` is the wording check, `import.js` reads an uploaded PDF or Word file, and
+  `speech.js` / `interview.js` / `organise.js` are the spoken route. `themes/*.css` are the designs.
   It draws its own preview but asks `/api/export` for finished files.
 - `src/resumesmith/` — the renderer and command line: `./resumesmith build FILE -f pdf,docx
   [-t theme|all]`, `check`, `match`, `serve`, `new`. Renders with Playwright/Chromium.
@@ -16,6 +18,21 @@ writes the server's disk — the draft belongs in the browser and finished files
 **Exports go through the Python renderer, never the browser's print dialog.** That dialog stamps the
 page URL, date and page number onto the resume and makes the person click through it; a PDF must come
 out of Chromium clean, in one click. This was tried the other way and reverted.
+
+**Dictation is the only thing here that leaves the machine.** `speech.js` uses the browser's own
+recogniser, and Chrome hands the audio to a Google service to transcribe it. Every way in says so
+before the microphone opens — the note on the front door, the line in the interview panel, the
+README. Don't add a route that records someone without that sentence in front of them, and keep
+`supported()` guarding the offer: Firefox has no recogniser at all, and a door that does nothing is
+worse than no door.
+
+**A page is never served as a file.** `home.html` and `index.html` carry `{{TOKEN}}`, so they are
+rendered by route through `PAGES`; `asset()` refuses `.html` outright. Handed out as an asset, a
+page arrives with the placeholder still in it and the API rejects everything it sends.
+
+**The section order lives in three places and they must agree**: `SECTIONS` in `model.py` drives the
+exporter, `SECTION_KEYS` in `app.js` the form, and the key order of `SECTION_TITLES` in `resume.js`
+the preview. Change one, change all three — the markup check below is what catches it.
 
 Tests: `.venv/bin/python -m pytest -q`.
 

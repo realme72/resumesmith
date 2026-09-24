@@ -137,6 +137,41 @@ textarea.area { resize: vertical; min-height: 38px; line-height: 1.4; }
 .tip.warn { color: var(--warn); }
 .tip.error { color: var(--bad); }
 
+/* ---------- dictation ---------- */
+.field-head { display: flex; align-items: center; gap: 8px; }
+.field-head .label { flex: 1; }
+.mic { padding: 1px 7px; font-size: 12px; line-height: 1.4; color: var(--muted); background: transparent; }
+.mic:hover { color: var(--ink); }
+.mic.listening { color: var(--bad); border-color: var(--bad); }
+.mic:disabled { display: none; }  /* a browser that can't listen shouldn't show a dead button */
+
+/* ---------- spoken interview ---------- */
+.iv-back {
+  position: fixed; inset: 0; z-index: 50; display: flex;
+  align-items: center; justify-content: center; padding: 20px;
+  background: rgb(0 0 0 / 0.45);
+}
+.iv-panel {
+  width: min(680px, 100%); max-height: 100%; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 12px; padding: 20px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  box-shadow: 0 18px 48px rgb(0 0 0 / 0.3);
+}
+.iv-head { display: flex; align-items: flex-start; gap: 10px; }
+.iv-head > div { flex: 1; }
+.iv-title { margin: 0; font-size: 18px; }
+.iv-count { font-size: 12px; color: var(--muted); }
+.iv-ask { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
+.iv-box { padding: 8px 10px; background: var(--field); border: 1px solid var(--line); border-radius: 8px; }
+.iv-text { border: 0; padding: 0; background: transparent; }
+.iv-text:focus { outline: none; }
+.iv-partial { color: var(--muted); font-style: italic; }
+.iv-status { margin: 0; min-height: 18px; font-size: 13px; color: var(--muted); }
+.iv-privacy { margin: 0; font-size: 12px; color: var(--muted); }
+.iv-foot { display: flex; align-items: center; gap: 8px; }
+.iv-spacer { flex: 1; }
+.iv-mic.listening { background: var(--bad); border-color: var(--bad); color: #fff; }
+
 /* ---------- preview ---------- */
 .preview-head { display: flex; align-items: center; gap: 10px; padding: 8px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
 .badge { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: var(--line); color: var(--muted); }

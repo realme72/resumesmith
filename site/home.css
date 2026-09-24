@@ -1,0 +1,91 @@
+/* The front door. Tokens, buttons and the top bar come from app.css; this is only what the
+   landing page adds. */
+
+body { min-height: 100%; height: auto; }
+
+.home {
+  flex: 1;
+  width: min(1040px, 100%);
+  margin: 0 auto;
+  padding: 44px 20px 28px;
+}
+
+.home-title {
+  margin: 0;
+  font-size: clamp(26px, 4.4vw, 40px);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.home-sub {
+  margin: 12px 0 0;
+  max-width: 62ch;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+/* Shown only when this browser already holds a draft. The [hidden] rule has to be written out:
+   setting display here outranks the browser's own [hidden] { display: none }, and without it the
+   strip paints as an empty band for everyone arriving with nothing saved. */
+.resume-draft[hidden] { display: none; }
+.resume-draft {
+  display: block;
+  margin-top: 22px;
+  padding: 11px 14px;
+  border: 1px solid var(--brand);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--brand) 9%, transparent);
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 14px;
+}
+.resume-draft:hover { background: color-mix(in srgb, var(--brand) 16%, transparent); }
+.resume-draft b { color: var(--brand); }
+
+.doors {
+  margin-top: 26px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(258px, 1fr));
+  gap: 14px;
+}
+
+.door {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 20px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--ink);
+  text-decoration: none;
+  transition: border-color 0.12s, transform 0.12s;
+}
+.door:hover { border-color: var(--brand); transform: translateY(-2px); }
+.door:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+.door-icon { font-size: 26px; line-height: 1; }
+.door-title { font-weight: 650; font-size: 16px; }
+.door-text { color: var(--muted); font-size: 13.5px; line-height: 1.5; }
+.door-note { margin-top: auto; padding-top: 8px; color: var(--muted); font-size: 12px; }
+
+/* a door the browser can't open */
+.door.unavailable { opacity: 0.6; pointer-events: none; }
+.door.unavailable .door-note { color: var(--warn); }
+
+.home-points {
+  margin: 30px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px 22px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.home-points b { color: var(--ink); font-weight: 600; }
+
+@media (max-width: 560px) {
+  .home { padding: 28px 16px 20px; }
+  .door { padding: 16px; }
+}

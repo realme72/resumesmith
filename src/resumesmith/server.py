@@ -34,9 +34,15 @@ TYPES = {".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8",
 # .mjs matters: a browser refuses a module script served as application/octet-stream.
 
 
+# The pages, by the address each answers on. Both are read as templates, never handed out as files.
+PAGES = {"/": "home.html", "/build": "index.html"}
+
+
 def asset(path: str) -> Path | None:
     """A file inside site/, or None — so a request can't wander outside that folder."""
     candidate = (SITE / path.lstrip("/")).resolve()
+    if candidate.suffix == ".html":
+        return None  # a page carries {{TOKEN}}; served as a file it would arrive unusable
     if SITE.resolve() in candidate.parents and candidate.is_file():
         return candidate
     return None
@@ -221,8 +227,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         url = urlparse(self.path)
-        if url.path == "/":
-            page = (SITE / "index.html").read_text(encoding="utf-8").replace("{{TOKEN}}", self.dash.token)
+        if (name := PAGES.get(url.path.rstrip("/") or "/")) is not None:
+            page = (SITE / name).read_text(encoding="utf-8").replace("{{TOKEN}}", self.dash.token)
             return self._send(200, page.encode(), TYPES[".html"], {"Cache-Control": "no-store"})
         if (file := asset(url.path)) is not None:
             return self._send(200, file.read_bytes(), TYPES.get(file.suffix, "application/octet-stream"),

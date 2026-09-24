@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ResumeSmith — a free resume builder that keeps your data</title>
+<meta name="description" content="Speak it, write it, or improve the resume you already have. A polished, ATS-friendly PDF or Word file, built in your browser — nothing is uploaded.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='13' font-size='13'%3E%F0%9F%93%84%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="home.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">ResumeSmith</div>
+</header>
+
+<main class="home">
+  <h1 class="home-title">Three ways in. One good resume.</h1>
+  <p class="home-sub">
+    Free, no account, no paid tier. Your details stay in this browser — there's nothing to upload
+    and nothing kept once your file is handed over.
+  </p>
+
+  <a class="resume-draft" id="resume-draft" href="/build" hidden></a>
+
+  <div class="doors">
+    <a class="door" id="door-speech" href="/build?start=speech">
+      <span class="door-icon" aria-hidden="true">🎙️</span>
+      <span class="door-title">Talk me through it</span>
+      <span class="door-text">
+        Answer a few questions out loud — where you worked, what you built, what you used. It writes
+        the first draft, you fix what it got wrong.
+      </span>
+      <span class="door-note" id="speech-note">Chrome, Edge or Safari. Your words go to the browser's transcription service.</span>
+    </a>
+
+    <a class="door" href="/build">
+      <span class="door-icon" aria-hidden="true">⌨️</span>
+      <span class="door-title">Write it myself</span>
+      <span class="door-text">
+        The full form, with a live preview beside it and coaching on every bullet as you type.
+      </span>
+      <span class="door-note">Nothing leaves this machine.</span>
+    </a>
+
+    <a class="door" href="/build?start=upload">
+      <span class="door-icon" aria-hidden="true">📄</span>
+      <span class="door-title">Improve the one I have</span>
+      <span class="door-text">
+        Open a PDF or Word resume, and edit it here instead of retyping it. Read in your browser,
+        never uploaded.
+      </span>
+      <span class="door-note">.pdf or .docx</span>
+    </a>
+  </div>
+
+  <ul class="home-points">
+    <li><b>Written for the machines that read it first</b> — one column, real selectable text, no ligature tricks.</li>
+    <li><b>One page</b> — it tightens the spacing and type until your content fits, and says so when it can't.</li>
+    <li><b>PDF and Word</b> — rendered properly, with none of the URL and date stamps a print dialog adds.</li>
+  </ul>
+</main>
+
+<p class="privacy">
+  Your draft is kept in this browser's own storage. Nothing is stored on the server, and no file you
+  open here is uploaded anywhere.
+</p>
+
+<script type="module" src="home.js"></script>
+</body>
+</html>

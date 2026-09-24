@@ -14,8 +14,10 @@ cd resumesmith
 ./resumesmith serve
 ```
 
-Your browser opens on the dashboard: details on the left, a live preview on the right, formats along
-the bottom. Press **Export** and the files land in your downloads.
+Your browser opens on the front door, which asks how you want to start: talk it through, write it
+yourself, or open a resume you already have. All three arrive at the same builder on `/build` —
+details on the left, a live preview on the right, formats along the bottom. Press **Export** and the
+files land in your downloads.
 
 ## What it does
 
@@ -43,6 +45,27 @@ place confidently is left out rather than invented, so check every section.
 
 PDFs are read with [pdf.js](https://mozilla.github.io/pdf.js/) (Mozilla, Apache-2.0), vendored in
 `site/vendor/` so the page calls nobody at runtime.
+
+## Talking it through
+
+**Talk me through it** asks seven questions — who you are, where you've worked, what you've built —
+and you answer them out loud. What you say is sorted into jobs, bullets, skills and education; the
+first person comes off each bullet, so "I rebuilt the ledger" is written down as "Rebuilt the
+ledger"; and the sentence that merely places a job ("I work at Finlo since April 2023") is dropped
+rather than printed as though it were an achievement.
+
+It won't turn you into someone more impressive than you are. It organises what you said and leaves
+the wording to you, with the review panel marking every bullet that still wants a number or a
+stronger verb. Names, dates and job titles are what it gets wrong most often, and anything it
+couldn't place is left empty rather than invented — so read it through before exporting.
+
+There's a microphone on every long box in the builder as well, for dictating a single bullet
+without sitting through the interview.
+
+**This is the one part of ResumeSmith that leaves your machine.** The speech recognition is the
+browser's own, and Chrome and Edge send the recorded audio to a Google service to turn it into text.
+Nothing else about your resume is uploaded. Firefox implements no speech recognition at all, so the
+front door doesn't offer that route there.
 
 ## Formats
 

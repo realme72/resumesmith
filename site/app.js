@@ -7,6 +7,8 @@
 import { prepare, renderHtml, themeCss } from "./resume.js";
 import { bulletTips, review } from "./review.js";
 import { readResume } from "./import.js";
+import { runInterview } from "./interview.js";
+import { listen, supported as canListen } from "./speech.js";
 
 const THEMES = ["classic", "compact", "modern"];
 const FORMATS = {
@@ -281,10 +283,49 @@ function field(label, path, { placeholder = "", type = "text", wide = false } = 
     el("input", { type, class: "input", placeholder, "data-path": path, value: getPath(state, path) ?? "" }));
 }
 
+/**
+ * A microphone for one box. It writes the words into the textarea and lets the ordinary input
+ * handling pick them up, so dictating and typing end up on exactly the same path.
+ */
+function micButton(area) {
+  let session = null;
+  const mic = el("button", { type: "button", class: "btn icon mic", title: "Dictate this",
+                             disabled: !canListen() }, "🎙");
+  const stop = () => {
+    session?.stop();
+    session = null;
+    mic.classList.remove("listening");
+    mic.title = "Dictate this";
+  };
+  mic.addEventListener("click", (event) => {
+    event.preventDefault();  // the button sits inside a label, which would pull focus back
+    if (session) return stop();
+    try {
+      session = listen({
+        onFinal: (phrase) => {
+          area.value = `${area.value.trim()} ${phrase}`.trim();
+          area.dispatchEvent(new Event("input", { bubbles: true }));
+          autogrow(area);
+        },
+        onError: (message) => { setStatus(message); stop(); },
+        onEnd: stop,
+      });
+      mic.classList.add("listening");
+      mic.title = "Stop dictating";
+    } catch (e) {
+      setStatus(e.message);
+    }
+  });
+  return mic;
+}
+
 function areaField(label, path, { placeholder = "", rows = 3 } = {}) {
   const area = el("textarea", { class: "input area", rows, placeholder, "data-path": path });
   area.value = getPath(state, path) ?? "";
-  return el("label", { class: "field wide" }, label ? labelText(label) : null, area);
+  return el("label", { class: "field wide" },
+    el("span", { class: "field-head" },
+      label ? labelText(label) : el("span", { class: "label" }), micButton(area)),
+    area);
 }
 
 function refresh() {
@@ -349,6 +390,7 @@ function bulletList(path, placeholder) {
       area.value = value ?? "";
       return el("div", { class: "bullet-row", "data-tip-for": key },
         el("div", { class: "bullet-main" }, area, el("p", { class: "tip", hidden: true })),
+        micButton(area),
         button("✕", () => { list.splice(i, 1); refresh(); }, { cls: "btn icon danger", title: "Remove" }));
     }),
     addButton("Add achievement", () => { list.push(""); render(); focusLast(path); }));
@@ -717,15 +759,7 @@ $("#upload-file").addEventListener("change", async (event) => {
   $("#imported-note").hidden = true;
   try {
     const found = await readResume(file);
-    // An import is a fresh document, so it prints in the standard order rather than inheriting
-    // whatever the last draft was dragged into; the theme and page settings stay as they were.
-    state = adapt({ ...found, settings: { ...state.settings, sections: [...SECTION_KEYS] } });
-    if (!state.experience.length) state.experience = [newJob()];
-    if (!state.education.length) state.education = [newEducation()];
-    if (!state.skills.length) state.skills = [newSkillGroup()];
-    labelsTyped.clear();
-    render();
-    await runPreview();
+    await startFrom(found);
     setStatus("");
     const note = $("#imported-note");
     note.textContent = `Read ${file.name}. Check every field — dates, titles and bullets often need `
@@ -782,6 +816,21 @@ function wireSettings() {
 
 /* ---------- start ---------- */
 
+/**
+ * Fills the form from a resume that came in whole — read from a file, or built from what someone
+ * said. Either way it's a fresh document, so it prints in the standard section order rather than
+ * inheriting whatever the last draft was dragged into; theme and page settings stay as they were.
+ */
+async function startFrom(found) {
+  state = adapt({ ...found, settings: { ...state.settings, sections: [...SECTION_KEYS] } });
+  if (!state.experience.length) state.experience = [newJob()];
+  if (!state.education.length) state.education = [newEducation()];
+  if (!state.skills.length) state.skills = [newSkillGroup()];
+  labelsTyped.clear();
+  render();
+  await runPreview();
+}
+
 (async function init() {
   const draft = loadDraft();
   if (draft) state = adapt(draft.resume);
@@ -792,5 +841,19 @@ function wireSettings() {
     setStatus("Picked up where you left off");
   } else {
     showEmptyPreview();
+  }
+
+  // The front door has already asked which way in; it says so in the address.
+  const start = new URLSearchParams(location.search).get("start");
+  if (start === "upload") $("#upload-file").click();
+  if (start === "speech") {
+    const spoken = await runInterview();
+    if (spoken) {
+      await startFrom(spoken);
+      const note = $("#imported-note");
+      note.textContent = "Built from what you said. Check every field — names, dates and job titles "
+        + "are what it gets wrong most, and anything it couldn't place is missing rather than invented.";
+      note.hidden = false;
+    }
   }
 })();
