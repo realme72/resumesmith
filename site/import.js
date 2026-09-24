@@ -193,7 +193,8 @@ function splitParts(line) {
   // place name off the end when what remains still reads like a name.
   if (parts.length === 1) {
     const match = parts[0].match(/^(.+?)\s+((?:Remote|Hybrid|[A-Z][\w.'-]+(?:,\s*[A-Z][\w.'-]+)?))$/);
-    if (match && match[1].split(" ").length <= 5 && !JOB_WORDS.test(match[2])) {
+    if (match && match[1].split(" ").length <= 5 && !JOB_WORDS.test(match[2])
+        && !NOT_A_PLACE.test(match[2])) {
       return [clean(match[1]), clean(match[2])];
     }
   }
@@ -237,6 +238,10 @@ function stripDates(text) {
 /* A place is a short phrase with no job words in it: "Bengaluru", "Pune, India", "Remote". */
 const PLACE = /^(remote|hybrid|[A-Z][\w.'-]+(?:[ -][A-Z][\w.'-]+){0,2}(?:,\s*[A-Z][\w.'-]+(?:\s[A-Z][\w.'-]+)?)?)$/;
 const JOB_WORDS = /\b(engineer|developer|manager|designer|analyst|scientist|architect|consultant|intern|lead|head|director|officer|specialist|administrator|associate|president|founder|sde|swe)\b/i;
+/* Words that finish the name of an employer or a qualification rather than naming a city. Shape
+   alone can't tell "Acme Engineering" or "…Communication Engineering" from "Acme Bengaluru", and
+   reading the last word as a location costs the name its tail. */
+const NOT_A_PLACE = /^(engineering|technology|technologies|solutions|systems|services|consulting|software|labs|laboratories|group|ventures|partners|studios|institute|university|college|school|academy|ltd|limited|inc|llp|llc|pvt|private|corp|corporation|gmbh)$/i;
 
 /** Sorts the pieces of a header row by what they look like, not by where they sit. */
 function placeParts(parts, entry) {
@@ -337,22 +342,42 @@ function parseSkills(lines) {
   return groups;
 }
 
+/* What a qualification is called, and how a mark is written next to it. */
+const DEGREE_WORDS = /\b(b\.?tech|m\.?tech|b\.?e|m\.?e|b\.?sc|m\.?sc|b\.?com|m\.?com|bca|mca|mba|bachelor|master|diploma|ph\.?d|doctorate|intermediate|higher secondary|class (?:x|xii|10|12))\b/i;
+const SCORE = /\b(?:cgpa|gpa)\b[^,|]*|\b\d{1,2}(?:\.\d+)?\s*\/\s*(?:10|4)\b|\b\d{1,3}(?:\.\d+)?\s*%/i;
+
 function parseEducation(lines) {
   const entries = [];
   for (const line of lines) {
     const { text, start, end } = stripDates(line);
-    const parts = splitParts(text);
+    // Split on the separators alone. splitParts would peel a capitalised last word off as a city,
+    // which costs "B.Tech, Computer Science and Engineering" its final word.
+    const parts = text.split(/\s*[|·•—]\s+|\s{3,}/).map(clean).filter(Boolean);
+    if (!parts.length) continue;
+
+    // A degree sits on the line under its school, so it joins the entry above instead of starting
+    // one; anything else names an institution and begins a new entry. Reading the second piece of
+    // the school's row as the degree put the city there, and then the real degree, finding that
+    // slot taken, became a school of its own — one entry printed as two.
     const last = entries[entries.length - 1];
-    if (last && !last.degree && (start || /b\.?tech|b\.?e\b|m\.?tech|bachelor|master|diploma|b\.?sc|m\.?sc|mba|phd/i.test(text))) {
-      last.degree = parts[0] || text;
-      last.start = last.start || start;
-      last.end = last.end || end;
-      continue;
+    const isDegree = DEGREE_WORDS.test(parts[0]);
+    const entry = isDegree && last && !last.degree
+      ? last
+      : { school: "", degree: "", location: "", start: "", end: "", score: "" };
+    if (entry !== last) entries.push(entry);
+
+    for (const part of parts) {
+      if (!entry.school && !isDegree) entry.school = part;
+      else if (!entry.degree && DEGREE_WORDS.test(part)) entry.degree = part;
+      else if (!entry.score && SCORE.test(part)) entry.score = part;
+      else if (!entry.location && PLACE.test(part)) entry.location = part;
+      else if (!entry.degree) entry.degree = part;
+      else if (!entry.location) entry.location = part;
     }
-    entries.push({ school: parts[0] || text, degree: parts[1] || "", location: parts[2] || "",
-                   start, end, score: (text.match(/(cgpa|gpa|\d+(?:\.\d+)?\s*%)[^,|]*/i) || [""])[0] });
+    entry.start = entry.start || start;
+    entry.end = entry.end || end;
   }
-  return entries.filter((entry) => entry.school);
+  return entries.filter((entry) => entry.school || entry.degree);
 }
 
 function parseProjects(lines) {
