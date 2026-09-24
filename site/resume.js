@@ -5,8 +5,10 @@
 const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const PRESENT_WORDS = ["present", "current", "now", "ongoing", "till date", "today"];
+/* Key order is the print order, since ALL_SECTIONS is built from it — keep it in step with
+   SECTIONS in model.py and SECTION_KEYS in app.js. */
 const SECTION_TITLES = {
-  summary: "Summary", skills: "Skills", experience: "Experience", projects: "Projects",
+  summary: "Summary", experience: "Experience", projects: "Projects", skills: "Skills",
   education: "Education", certifications: "Certifications", achievements: "Achievements",
 };
 const PAGE_SIZES = { A4: { w: "210mm", h: "297mm" }, Letter: { w: "8.5in", h: "11in" } };

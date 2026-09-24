@@ -27,8 +27,9 @@ the bottom. Press **Export** and the files land in your downloads.
 - **Coaching as you type** — write "Responsible for the billing APIs" and it answers: *lead with what
   you did: Built, Led, Cut, Shipped…*. It also flags bullets with no numbers, pronouns, buzzwords,
   dates that run backwards and jobs out of order.
-- **Your layout** — drag sections by the ⠿ handle to put Skills below Experience, or lead with
-  Education. Three designs (classic, modern, compact), your own accent colour, A4 or US Letter.
+- **Your layout** — Summary, Experience, Projects, Skills, then Education, and drag any section by
+  its ⠿ handle to change that — freshers usually lead with Education. Three designs (classic,
+  modern, compact), your own accent colour, A4 or US Letter.
 - **Links that read well** — paste a LinkedIn address and it prints as "LinkedIn", clickable.
 
 ## Starting from a resume you already have

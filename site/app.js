@@ -173,7 +173,7 @@ window.addEventListener("beforeunload", saveDraft);
 
 /* ---------- section order ---------- */
 
-const SECTION_KEYS = ["summary", "skills", "experience", "projects", "education", "certifications",
+const SECTION_KEYS = ["summary", "experience", "projects", "skills", "education", "certifications",
                       "achievements", "extra"];
 const SECTION_LABELS = {
   summary: "Summary", skills: "Skills", experience: "Experience", projects: "Projects",
@@ -717,7 +717,9 @@ $("#upload-file").addEventListener("change", async (event) => {
   $("#imported-note").hidden = true;
   try {
     const found = await readResume(file);
-    state = adapt({ ...found, settings: state.settings });
+    // An import is a fresh document, so it prints in the standard order rather than inheriting
+    // whatever the last draft was dragged into; the theme and page settings stay as they were.
+    state = adapt({ ...found, settings: { ...state.settings, sections: [...SECTION_KEYS] } });
     if (!state.experience.length) state.experience = [newJob()];
     if (!state.education.length) state.education = [newEducation()];
     if (!state.skills.length) state.skills = [newSkillGroup()];

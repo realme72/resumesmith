@@ -15,7 +15,10 @@ THEMES_DIR = ROOT / "site" / "themes"  # shared with the browser app, which fetc
 
 MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"]
 PRESENT_WORDS = {"present", "current", "now", "ongoing", "till date", "today"}
-SECTIONS = ("summary", "skills", "experience", "projects", "education", "certifications",
+# Print order: what they did, then what they built, then skills and education. Anyone wanting
+# something else drags the handles — freshers usually lead with education. site/app.js and
+# site/resume.js carry the same order and must be changed with this.
+SECTIONS = ("summary", "experience", "projects", "skills", "education", "certifications",
             "achievements", "extra")
 DEFAULT_TITLES = {
     "summary": "Summary", "skills": "Skills", "experience": "Experience", "projects": "Projects",
