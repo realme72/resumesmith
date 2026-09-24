@@ -206,16 +206,16 @@ function splitParts(line) {
  * hanging — no closing punctuation, and this line doesn't start something new.
  */
 function rejoinWrapped(lines) {
-  // A wrapped tail is short and follows a line that ran to the page edge ("…payouts from T+2 to
-  // under" / "15 minutes for 2M+ merchants"). Punctuation is no guide: bullets rarely end in a
-  // full stop, and keying on that glues every bullet to the one above it.
-  const titleish = /^[A-Z][\w.'&-]*(?: [A-Z][\w.'&-]*){0,2}$/;  // "ShipKart Pune" starts something
+  // Two things have to hold together: the line above ran to the page edge and stopped mid-sentence,
+  // and this one picks it up in lower case. Neither works alone — keying on punctuation glues every
+  // bullet to the one above it, and keying on length cut tails off at 40 characters, which left
+  // "…handling over 10,000" and "daily transactions across 400+ tenants" as separate bullets.
   const out = [];
   for (const line of lines) {
     const previous = out[out.length - 1];
     // A line holding a column separator is a row of its own ("ShipKart | Pune"), never a tail.
-    const continues = previous && previous.length > 60 && !titleish.test(line) && !line.includes("|")
-      && (line.length < 20 || (line.length < 40 && /^[a-z\d(]/.test(line)))
+    const continues = previous && previous.length > 60 && !line.includes("|")
+      && !/[.!?:;]$/.test(previous) && /^[a-z\d(]/.test(line)
       && !headingFor(line) && !DATE_RANGE.test(line) && !BULLET.test(line)
       && !/^[^:：]{2,40}[:：]\s+\S/.test(line);
     if (continues) out[out.length - 1] = `${previous} ${line}`;
@@ -240,12 +240,22 @@ const JOB_WORDS = /\b(engineer|developer|manager|designer|analyst|scientist|arch
 
 /** Sorts the pieces of a header row by what they look like, not by where they sit. */
 function placeParts(parts, entry) {
+  const rest = [];
   for (const part of parts) {
     if (!part) continue;
     if (!entry.role && JOB_WORDS.test(part)) entry.role = part;
-    else if (!entry.location && PLACE.test(part) && !JOB_WORDS.test(part) && entry.company) entry.location = part;
-    else if (!entry.company) entry.company = part;
-    else if (!entry.role) entry.role = part;
+    else rest.push(part);
+  }
+  // The place is the last piece of the row, when it names one. Whatever is left is the employer,
+  // kept whole: "Vantive Consulting | Northwind Bank" is one job held through a vendor, and
+  // spreading it across company and location loses half of it and invents a location.
+  const last = rest[rest.length - 1];
+  if (rest.length > 1 && !entry.location && PLACE.test(last) && !JOB_WORDS.test(last)) {
+    entry.location = rest.pop();
+  }
+  if (rest.length && !entry.company) entry.company = rest.join(" | ");
+  else for (const part of rest) {
+    if (!entry.role) entry.role = part;
     else if (!entry.location) entry.location = part;
   }
 }
@@ -255,7 +265,8 @@ const newEntry = () => ({ company: "", role: "", location: "", start: "", end: "
 function parseExperience(lines) {
   const jobs = [];
   let current = null;
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
     if (BULLET.test(line)) {
       if (current) current.bullets.push(clean(line.replace(BULLET, "")));
       continue;
@@ -289,6 +300,17 @@ function parseExperience(lines) {
     }
     if (current && !current.role && !current.bullets.length && JOB_WORDS.test(line)) {
       current.role = clean(line);                     // the line under a company is usually the title
+      continue;
+    }
+    // Plenty of resumes put the employer on its own line above the dated role row. Read in order
+    // that line looks like prose and lands in the bullets, and the row below it — a title and
+    // dates, nothing else — then reads as a promotion and inherits the employer above it. What
+    // gives it away is the row underneath, so look there before treating it as a sentence.
+    if (DATE_RANGE.test(lines[i + 1] || "") && !/[.!?]$/.test(line)
+        && line.length < 90 && /^[A-Z(]/.test(line)) {
+      current = newEntry();
+      placeParts(splitParts(line), current);
+      jobs.push(current);
       continue;
     }
     // Inside a job, a sentence with no marker is a bullet whose glyph the PDF didn't keep.
