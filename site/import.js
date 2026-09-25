@@ -90,10 +90,26 @@ async function bulletStyles(buffer) {
 /** Lines of text from a .docx, with list paragraphs marked so they read as bullets. */
 export async function readDocx(file) {
   const buffer = await file.arrayBuffer();
-  const [xml, listStyles] = await Promise.all([
-    unzipEntry(buffer, "word/document.xml"), bulletStyles(buffer)]);
+  const [xml, listStyles, relsXml] = await Promise.all([
+    unzipEntry(buffer, "word/document.xml"), bulletStyles(buffer),
+    unzipEntry(buffer, "word/_rels/document.xml.rels")]);
   const doc = new DOMParser().parseFromString(xml, "application/xml");
   const lines = [];
+
+  // Word keeps a link's address away from its text: the run reads "LinkedIn" and carries an r:id,
+  // and what it points at lives in the relationships file. Read only the text and every labelled
+  // link on the resume is lost, because the address was never written on the page.
+  const REL_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
+  const targets = new Map();
+  if (relsXml) {
+    const rels = new DOMParser().parseFromString(relsXml, "application/xml");
+    for (const rel of rels.getElementsByTagName("Relationship")) {
+      if ((rel.getAttribute("Type") || "").endsWith("/hyperlink")) {
+        targets.set(rel.getAttribute("Id"), rel.getAttribute("Target"));
+      }
+    }
+  }
+  const links = [];
 
   for (const paragraph of doc.getElementsByTagNameNS(WORD_NS, "p")) {
     // Runs separated by a tab are columns of one row — a company and its location, say. Joining
@@ -106,6 +122,11 @@ export async function readDocx(file) {
     const text = clean(pieces.join("").replace(/\t+/g, " | "));
     if (!text) continue;
 
+    for (const anchor of paragraph.getElementsByTagNameNS(WORD_NS, "hyperlink")) {
+      const url = targets.get(anchor.getAttributeNS(REL_NS, "id"));
+      if (url) links.push({ url, label: clean(anchor.textContent) });
+    }
+
     const styleNode = paragraph.getElementsByTagNameNS(WORD_NS, "pStyle")[0];
     const style = styleNode ? styleNode.getAttributeNS(WORD_NS, "val") : "";
     const listed = paragraph.getElementsByTagNameNS(WORD_NS, "numPr").length > 0
@@ -113,7 +134,7 @@ export async function readDocx(file) {
     lines.push(listed && !BULLET.test(text) ? `• ${text}` : text);
   }
   if (!lines.length) throw new Error("that Word file has no text in it");
-  return lines;
+  return { lines, links };
 }
 
 /* ---------- reading a .pdf ---------- */
@@ -133,6 +154,7 @@ export async function readPdf(file) {
   const library = await loadPdfjs();
   const pdf = await library.getDocument({ data: await file.arrayBuffer() }).promise;
   const lines = [];
+  const links = [];
   for (let number = 1; number <= pdf.numPages; number += 1) {
     const page = await pdf.getPage(number);
     const content = await page.getTextContent();
@@ -144,6 +166,21 @@ export async function readPdf(file) {
       if (!rows.has(key)) rows.set(key, []);
       rows.get(key).push({ x: item.transform[4], width: item.width || 0, text: item.str });
     }
+    // A PDF hides a labelled link exactly as Word does — the page shows "LinkedIn" and the address
+    // sits in an annotation over it — so pair each one with whatever text its rectangle covers.
+    for (const note of await page.getAnnotations()) {
+      const url = note.subtype === "Link" ? (note.url || note.unsafeUrl) : null;
+      if (!url) continue;
+      const [left, bottom, right, top] = note.rect;
+      const covered = content.items.filter((item) => {
+        const x = item.transform[4] + (item.width || 0) / 2;
+        const y = item.transform[5] + (item.height || 8) / 2;
+        return x >= Math.min(left, right) && x <= Math.max(left, right)
+          && y >= Math.min(bottom, top) && y <= Math.max(bottom, top);
+      });
+      links.push({ url, label: clean(covered.map((item) => item.str).join("")) });
+    }
+
     [...rows.entries()]
       .sort((a, b) => b[0] - a[0])                       // top of the page downwards
       .forEach(([, pieces]) => {
@@ -162,7 +199,8 @@ export async function readPdf(file) {
   if (!lines.length) {
     throw new Error("that PDF has no text in it — it may be a scan, which can't be read");
   }
-  return rejoinWrapped(lines);  // a PDF wraps long bullets across lines; put them back together
+  // a PDF wraps long bullets across lines; put them back together
+  return { lines: rejoinWrapped(lines), links };
 }
 
 /* ---------- turning lines into a resume ---------- */
@@ -402,7 +440,7 @@ function parseProjects(lines) {
  * Anything it can't place with confidence is left out rather than invented — the form is where
  * the person fixes it, and a wrong entry is more annoying than a missing one.
  */
-export function linesToResume(lines) {
+export function linesToResume(lines, found = []) {
   const sections = { header: [] };
   let currentKey = "header";
   for (const line of lines) {
@@ -420,9 +458,26 @@ export function linesToResume(lines) {
   const email = (joined.match(EMAIL) || [""])[0];
   // strip the address first, or its own domain reads as a link
   const withoutEmail = joined.replace(new RegExp(EMAIL.source, "gi"), " ");
-  const links = [...new Set((withoutEmail.match(new RegExp(URL_LIKE, "gi")) || [])
+  const written = [...new Set((withoutEmail.match(new RegExp(URL_LIKE, "gi")) || [])
     .map((url) => url.replace(/[.,;|]+$/, "").trim())
     .filter(Boolean))];
+
+  // A link printed under a label leaves no address in the text at all, so the reader hands those
+  // over separately — out of the PDF's annotations, or Word's relationships. Only the ones whose
+  // label appears in the header are contact links: a project's repository is an annotation too,
+  // and it belongs to the project, not beside the phone number.
+  const headerText = header.join(" · ").toLowerCase();
+  const same = (url) => url.replace(/^https?:\/\//i, "").replace(/\/+$/, "").toLowerCase();
+  const seen = new Set();
+  const links = [];
+  for (const link of [...found.filter((l) => /^https?:\/\//i.test(l.url) && l.label
+                                       && headerText.includes(l.label.toLowerCase())),
+                      ...written.map((url) => ({ url, label: "" }))]) {
+    if (seen.has(same(link.url))) continue;
+    seen.add(same(link.url));
+    // a label that is itself the address says nothing extra — let it print as the address
+    links.push({ url: link.url, label: URL_LIKE.test(link.label) ? "" : link.label });
+  }
 
   // A header laid out in columns arrives as one line ("Aarav Mehta | Bengaluru · +91 … · a@b.com"),
   // so look at the pieces of each line rather than the line itself.
@@ -436,7 +491,7 @@ export function linesToResume(lines) {
     // a phone number sits between separators on the contact line, often with a country code
     phone: clean((withoutEmail.match(/(?:\+\d{1,3}[\s-]?)?(?:\d[\d\s-]{7,13}\d)/) || [""])[0]),
     location: "",
-    links: links.map((url) => ({ url, label: "" })),
+    links,
   };
   // The headline sits on the line below the name. Looking at the next *fragment* instead would
   // pick up whatever shares the name's line — in a two-column header, that's the city.
@@ -448,6 +503,15 @@ export function linesToResume(lines) {
   basics.title = clean((below.split(/\s*[·•|]\s*/).map(clean)
     .find((piece) => plain(piece) && piece.length < 60 && /[a-z]/.test(piece)
       && !(PLACE.test(piece) && !JOB_WORDS.test(piece)) && piece !== basics.name)) || "");
+
+  // The city is the header fragment shaped like a place that nothing else has claimed. A link's
+  // label has to be ruled out by name rather than by shape: "LinkedIn" is a capitalised word just
+  // like "Bengaluru". Where both are present, "City, Country" beats a bare word.
+  const labels = new Set(found.map((l) => clean(l.label).toLowerCase()).filter(Boolean));
+  const places = fragments.filter((piece) => piece !== basics.name && piece !== basics.title
+    && plain(piece) && PLACE.test(piece) && !JOB_WORDS.test(piece)
+    && !labels.has(piece.toLowerCase()));
+  basics.location = clean(places.find((piece) => piece.includes(",")) || places[0] || "");
 
   return {
     basics,
@@ -466,8 +530,10 @@ export function linesToResume(lines) {
 /** Read a file the person picked, whatever kind it is. */
 export async function readResume(file) {
   const name = file.name.toLowerCase();
-  if (name.endsWith(".docx")) return linesToResume(await readDocx(file));
-  if (name.endsWith(".pdf")) return linesToResume(await readPdf(file));
+  if (name.endsWith(".docx") || name.endsWith(".pdf")) {
+    const { lines, links } = name.endsWith(".docx") ? await readDocx(file) : await readPdf(file);
+    return linesToResume(lines, links);
+  }
   if (name.endsWith(".doc")) {
     throw new Error("old .doc files can't be read — open it in Word and save as .docx");
   }

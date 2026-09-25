@@ -39,6 +39,11 @@ files land in your downloads.
 **Upload a resume** reads a `.pdf` or `.docx` and fills the form in, so you can edit what you have
 rather than retyping it. The file is read in your browser and never uploaded.
 
+Addresses are taken from the file rather than off the page, so a link printed as the word "LinkedIn"
+keeps the address behind it — a PDF holds that in a link annotation, Word in its relationships. Only
+the links in the header become contact details; a repository beside a project stays with the
+project.
+
 Treat the result as a head start, not a finished job: dates, job titles and bullet boundaries are
 guessed from layout, and a resume laid out in two columns reads worst of all. Anything it couldn't
 place confidently is left out rather than invented, so check every section.
