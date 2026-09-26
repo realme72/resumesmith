@@ -253,8 +253,12 @@ function rejoinWrapped(lines) {
   for (const line of lines) {
     const previous = out[out.length - 1];
     // A line holding a column separator is a row of its own ("ShipKart | Pune"), never a tail.
+    // A tail usually picks up in lower case, but an acronym is just as likely to be what got
+    // pushed onto the next line — "…preview, automated" / "PDF/DOCX generation, and production
+    // deployment." Insisting on lower case left that stranded, and a stranded tail reads as
+    // whatever starts the next section.
     const continues = previous && previous.length > 60 && !line.includes("|")
-      && !/[.!?:;]$/.test(previous) && /^[a-z\d(]/.test(line)
+      && !/[.!?:;]$/.test(previous) && /^(?:[a-z\d(]|[A-Z]{2,}[/\-&]?)/.test(line)
       && !headingFor(line) && !DATE_RANGE.test(line) && !BULLET.test(line)
       && !/^[^:：]{2,40}[:：]\s+\S/.test(line);
     if (continues) out[out.length - 1] = `${previous} ${line}`;
@@ -418,18 +422,37 @@ function parseEducation(lines) {
   return entries.filter((entry) => entry.school || entry.degree);
 }
 
+/**
+ * A line that describes the project above it rather than naming a new one. A project's name is a
+ * few words, often with its address or its tools beside it; a description is a sentence. Nothing
+ * on the page says which is which — the PDF keeps no bullet glyph, and bold is not a heading — so
+ * one project read as two, the second named after the first one's description.
+ */
+const readsAsSentence = (line) => clean(line).split(" ").length > 6 && !line.includes(" | ")
+  && (line.length > 45 || /[.!?]$/.test(line));
+
 function parseProjects(lines) {
   const projects = [];
   for (const line of lines) {
-    if (BULLET.test(line) && projects.length) {
-      projects[projects.length - 1].bullets.push(clean(line.replace(BULLET, "")));
+    const current = projects[projects.length - 1];
+    if (BULLET.test(line) && current) {
+      current.bullets.push(clean(line.replace(BULLET, "")));
+      continue;
+    }
+    if (current && readsAsSentence(line)) {
+      // the first sentence is what the project is; anything after it is another achievement
+      if (!current.description) current.description = clean(line);
+      else current.bullets.push(clean(line));
       continue;
     }
     const { text } = stripDates(line);
     const parts = splitParts(text);
     const url = (text.match(URL_LIKE) || [""])[0];
+    // The tools are whichever piece beside the name isn't the address: "ResumeSmith |
+    // resumesmith.in | Go, PostgreSQL" puts them third, and reading only the second piece dropped
+    // them for every project that gives an address.
     projects.push({ name: clean((parts[0] || text).replace(URL_LIKE, "")) || "Project",
-                    url, tech: parts[1] && !URL_LIKE.test(parts[1]) ? parts[1] : "",
+                    url, tech: parts.slice(1).find((part) => !URL_LIKE.test(part)) || "",
                     description: "", bullets: [] });
   }
   return projects;
