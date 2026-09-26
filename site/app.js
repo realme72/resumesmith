@@ -854,6 +854,13 @@ async function startFrom(found) {
   const start = new URLSearchParams(location.search).get("start");
   if (start === "upload") $("#upload-file").click();
   if (start === "speech") {
+    // Finishing the interview replaces whatever is in the form, which is fine for an empty one and
+    // not fine for the draft someone came back to.
+    const { settings: _settings, ...typed } = state;
+    if (hasContent(typed)
+        && !confirm("Talking it through will replace the resume in this browser. Continue?")) {
+      return;
+    }
     const spoken = await runInterview();
     if (spoken) {
       await startFrom(spoken);

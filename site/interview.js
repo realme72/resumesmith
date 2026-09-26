@@ -103,33 +103,49 @@ function stopMic(mic) {
   if (mic.session) mic.session.stop();
   mic.session = null;
   if (mic.button) mic.button.classList.remove("listening");
+  if (mic.field) mic.field.classList.remove("dictating");
   mic.button = null;
+  mic.field = null;
+  if (mic.changed) mic.changed();
+}
+
+/**
+ * Starts filling one box by voice. Both ways in end up here — the button in the footer, which is
+ * the one people find, and the small microphone beside each label.
+ */
+function beginDictation(input, button, mic, say) {
+  const running = mic.field === input;
+  stopMic(mic);
+  if (running) return say("");
+  if (!input) return say("Click the box you want to fill first.");
+  try {
+    mic.session = listen({
+      onFinal: (phrase) => {
+        input.value = `${input.value.trim()} ${phrase}`.trim();
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        input.scrollTop = input.scrollHeight;
+      },
+      onError: (message) => { say(message); stopMic(mic); },
+      onEnd: () => stopMic(mic),
+    });
+    mic.button = button;
+    mic.field = input;
+    button.classList.add("listening");
+    input.classList.add("dictating");
+    if (mic.changed) mic.changed();
+    say(`Listening — filling “${input.dataset.label || "this box"}”. Speak normally, pause when you `
+      + "like, and press Stop when you're done.");
+  } catch (e) {
+    say(e.message);
+  }
 }
 
 function micFor(input, mic, say) {
   const button = el("button", { type: "button", class: "btn icon mic", title: "Dictate this",
-                                disabled: !supported() }, "🎙");
+                                "aria-label": "Dictate this", disabled: !supported() }, "🎙");
   button.addEventListener("click", (event) => {
     event.preventDefault();  // the button sits inside a label, which would pull focus back
-    const running = mic.button === button;
-    stopMic(mic);
-    if (running) return say("");
-    try {
-      mic.session = listen({
-        onFinal: (phrase) => {
-          input.value = `${input.value.trim()} ${phrase}`.trim();
-          input.dispatchEvent(new Event("input", { bubbles: true }));
-          input.scrollTop = input.scrollHeight;
-        },
-        onError: (message) => { say(message); stopMic(mic); },
-        onEnd: () => stopMic(mic),
-      });
-      mic.button = button;
-      button.classList.add("listening");
-      say("Listening — speak normally, and pause whenever you like.");
-    } catch (e) {
-      say(e.message);
-    }
+    beginDictation(input, button, mic, say);
   });
   return button;
 }
@@ -139,6 +155,7 @@ function fieldRow(def, target, mic, say) {
     ? el("textarea", { class: "input area", rows: 5, placeholder: def.placeholder })
     : el("input", { class: "input", type: def.type || "text", placeholder: def.placeholder });
   input.value = target[def.name] || "";
+  input.dataset.label = def.label || "this box";
   input.addEventListener("input", () => { target[def.name] = input.value; });
   return el("label", { class: `iv-field${def.wide ? " wide" : ""}` },
     el("span", { class: "iv-fhead" },
@@ -196,19 +213,43 @@ export function runInterview() {
       experience: [blank(JOB_FIELDS)], projects: [blank(PROJECT_FIELDS)],
       education: [blank(SCHOOL_FIELDS)],
     };
-    const mic = { session: null, button: null };
+    const mic = { session: null, button: null, field: null, changed: null };
     let index = 0;
+    let lastFocused = null;
 
     const heading = el("h2", { class: "iv-title" });
     const count = el("span", { class: "iv-count" });
     const prompt = el("p", { class: "iv-ask" });
     const body = el("div", { class: "iv-body" });
     const status = el("p", { class: "iv-status" });
-    const say = (message) => { status.textContent = message; };
+    const HINT = supported()
+      ? "Press Start talking to fill the box you're in — or the 🎙 beside any box."
+      : "This browser can't listen — try Chrome, Edge or Safari. You can still type every answer.";
+    const say = (message) => { status.textContent = message || HINT; };
 
     const back = el("button", { type: "button", class: "btn ghost" }, "Back");
     const skip = el("button", { type: "button", class: "btn ghost" }, "Skip");
     const next = el("button", { type: "button", class: "btn primary" }, "Next");
+    const talk = el("button", { type: "button", class: "btn talk", disabled: !supported() },
+                    "🎙 Start talking");
+
+    // The small microphones beside each label are easy to miss, so dictation gets a button of its
+    // own that fills whichever box you're in — the one you were last typing in, or the first that
+    // is still empty.
+    mic.changed = () => {
+      talk.textContent = mic.session ? "■ Stop" : "🎙 Start talking";
+      talk.classList.toggle("listening", Boolean(mic.session));
+    };
+    talk.addEventListener("click", () => {
+      const boxes = [...body.querySelectorAll("input, textarea")];
+      const target = (lastFocused && body.contains(lastFocused) ? lastFocused : null)
+        || boxes.find((box) => !box.value.trim()) || boxes[0];
+      if (target && target !== document.activeElement && !mic.session) target.focus();
+      beginDictation(target, talk, mic, say);
+    });
+    body.addEventListener("focusin", (event) => {
+      if (event.target.matches("input, textarea")) lastFocused = event.target;
+    });
 
     const move = (to) => { stopMic(mic); index = Math.min(Math.max(to, 0), STEPS.length - 1); show(); };
 
@@ -297,13 +338,9 @@ export function runInterview() {
       el("p", { class: "iv-privacy" },
         "Dictation sends your words to the browser's own transcription service to be turned into "
         + "text. Everything else about your resume stays on this machine."),
-      el("div", { class: "iv-foot" }, back, el("span", { class: "iv-spacer" }), skip, next));
+      el("div", { class: "iv-foot" }, back, talk, el("span", { class: "iv-spacer" }), skip, next));
 
     const overlay = el("div", { class: "iv-back", role: "dialog", "aria-modal": "true" }, panel);
-
-    if (!supported()) {
-      say("This browser can't listen — try Chrome, Edge or Safari. You can still type every answer.");
-    }
 
     document.body.append(overlay);
     show();

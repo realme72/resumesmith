@@ -179,6 +179,11 @@ textarea.area { resize: vertical; min-height: 38px; line-height: 1.4; }
 .iv-foot { display: flex; align-items: center; gap: 8px; }
 .iv-spacer { flex: 1; }
 .iv-mic.listening { background: var(--bad); border-color: var(--bad); color: #fff; }
+/* dictation needs to be the obvious thing in a panel full of boxes */
+.btn.talk { font-weight: 600; color: var(--brand); border-color: var(--brand); }
+.btn.talk.listening { background: var(--bad); border-color: var(--bad); color: #fff; }
+.btn.talk:disabled { display: none; }
+.input.dictating { outline: 2px solid var(--bad); outline-offset: -1px; }
 
 /* ---------- preview ---------- */
 .preview-head { display: flex; align-items: center; gap: 10px; padding: 8px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
