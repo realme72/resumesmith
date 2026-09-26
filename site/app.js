@@ -611,9 +611,16 @@ async function runPreview() {
 }
 
 function showEmptyPreview() {
+  // A form with everything but a name in it is a different situation from an empty one: the
+  // preview looks broken rather than unstarted, which is how it reads after an interview or an
+  // import that couldn't find one.
+  const { settings, ...typed } = state;
+  const message = hasContent(typed)
+    ? "Add your name and the preview appears"
+    : "Type your name and the preview appears here";
   frame.srcdoc = `<!doctype html><meta charset="utf-8"><body style="margin:0;height:100%;display:flex;
     align-items:center;justify-content:center;background:#fff;color:#8a93a3;
-    font:14px -apple-system,system-ui,sans-serif">Type your name and the preview appears here</body>`;
+    font:14px -apple-system,system-ui,sans-serif">${message}</body>`;
   $("#page-badge").textContent = "—";
   $("#page-badge").className = "badge";
   setStatus("");
@@ -851,9 +858,12 @@ async function startFrom(found) {
     if (spoken) {
       await startFrom(spoken);
       const note = $("#imported-note");
-      note.textContent = "Built from what you said. Check every field — names, dates and job titles "
-        + "are what it gets wrong most, and anything it couldn't place is missing rather than invented.";
+      note.textContent = state.basics.name.trim()
+        ? "Built from what you said. What you dictated into the big boxes was split into bullets — "
+          + "read them through, and add a number wherever you can."
+        : "Built from what you said. Add your name at the top and the preview will appear.";
       note.hidden = false;
+      if (!state.basics.name.trim()) $('[data-path="basics.name"]')?.focus();
     }
   }
 })();
