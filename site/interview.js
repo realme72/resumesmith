@@ -103,7 +103,11 @@ function stopMic(mic) {
   if (mic.session) mic.session.stop();
   mic.session = null;
   if (mic.button) mic.button.classList.remove("listening");
-  if (mic.field) mic.field.classList.remove("dictating");
+  if (mic.field) {
+    mic.field.classList.remove("dictating");
+    // a phrase still being revised when the microphone stops is kept, not dropped
+    mic.field.dispatchEvent(new Event("input", { bubbles: true }));
+  }
   mic.button = null;
   mic.field = null;
   if (mic.changed) mic.changed();
@@ -118,10 +122,21 @@ function beginDictation(input, button, mic, say) {
   stopMic(mic);
   if (running) return say("");
   if (!input) return say("Click the box you want to fill first.");
+  // What's already in the box, kept apart from what's being said now: the recogniser revises a
+  // phrase until it settles, so the words have to be shown as they arrive and replaced as they
+  // change. Waiting for a phrase to settle shows nothing for seconds at a time, which reads as a
+  // microphone that isn't working.
+  let settled = input.value.trim();
   try {
     mic.session = listen({
+      onPartial: (words) => {
+        if (!words) return;
+        input.value = settled ? `${settled} ${words}` : words;
+        input.scrollTop = input.scrollHeight;
+      },
       onFinal: (phrase) => {
-        input.value = `${input.value.trim()} ${phrase}`.trim();
+        settled = `${settled} ${phrase}`.trim();
+        input.value = settled;
         input.dispatchEvent(new Event("input", { bubbles: true }));
         input.scrollTop = input.scrollHeight;
       },
