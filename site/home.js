@@ -24,11 +24,13 @@ function when(at) {
 
 const saved = draft();
 if (saved) {
-  const name = String(saved.resume?.basics?.name || "").trim();
+  // Whose resume it is stays off the front page. The name would only ever be the reader's own —
+  // nobody else can see this draft — but a landing page is the one screen someone else is most
+  // likely to be looking at over your shoulder, and it earns nothing by being there.
   const link = document.querySelector("#resume-draft");
   link.replaceChildren(
     Object.assign(document.createElement("b"), { textContent: "Pick up where you left off" }),
-    document.createTextNode(` — ${name ? `${name}'s resume` : "your draft"}, saved${when(saved.at) || " in this browser"}.`),
+    document.createTextNode(` — your draft, saved${when(saved.at) || " in this browser"}.`),
   );
   link.hidden = false;
 }
